@@ -1,7 +1,8 @@
 ## MATH 154 Project Proposal: Investigating the Popularity of  Scientific Phenomena on Social Media Platforms ##
 ### Sal Fu (Project Manager, Reporter) 
 ### Jerry Xuan (Task Manager, Director of Research) 
-### Brian Lorenz (Facilitator, Director of Computation) 
+### Brian Lorenz (Facilitator, Director of Computation) ###
+
 ### Motivation
 
 Large numbers of scientific studies are published each day, and most go unnoticed. Some results, however, are much more noticed than others. Why? Why do some scientific results (gravitational wave detection, TRAPPIST-1 exoplanets) go viral? We wish to investigate what factors might influence the popularity of links about science on a social media platform. For example, some forms of presentation (video vs. text) may make an article more viral. The research field that the article pertains to could also matter. By investigating these factors, we might be able to help people better understand how to present their work and engage the public. 
@@ -12,13 +13,9 @@ We will be accessing data from either Reddit, Twitter, or Facebook via APIs. We 
 
 Reddit - https://github.com/reddit/reddit/wiki/API
 
-	-This R package may help: 
-	
-https://cran.r-project.org/web/packages/RedditExtractoR/RedditExtractoR.pdf
+This R package may help: https://cran.r-project.org/web/packages/RedditExtractoR/RedditExtractoR.pdf
 
-Or these Python resources (we are all familiar with Python):
-
-http://t-redactyl.io/blog/2015/11/analysing-reddit-data-part-2-extracting-the-data.html
+Or this Python resource (we are all familiar with Python): http://t-redactyl.io/blog/2015/11/analysing-reddit-data-part-2-extracting-the-data.html
 
 Twitter - https://www.rdocumentation.org/packages/twitteR/versions/1.1.9
 
