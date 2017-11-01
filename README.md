@@ -5,8 +5,11 @@ ma154-project3-teamviral created by GitHub Classroom
 ##Jerry Xuan (Task Manager, Director of Research)
 ##Brian Lorenz (Facilitator, Director of Computation) 
 ###Motivation
+
 Large numbers of scientific studies are published each day, and most go unnoticed. Some results, however, are much more noticed than others. Why? Why do some scientific results (gravitational wave detection, TRAPPIST-1 exoplanets) go viral? We wish to investigate what factors might influence the popularity of links about science on a social media platform. For example, some forms of presentation (video vs. text) may make an article more viral. The research field that the article pertains to could also matter. By investigating these factors, we might be able to help people better understand how to present their work and engage the public. 
+
 ###Data Access
+
 We will be accessing data from either Reddit, Twitter, or Facebook via APIs. We are still in the process of investigating the amount of data that we’ll have access to, but it seems that the Twitter APIs are live in the sense that we can only access data from the past 7 days. We have provided the links to the APIs below. Our analysis will only focus on one social media platform, but we will decide on that after exploring the different datasets and assessing the ease with which we can wrangle the dataset.
 Reddit - https://github.com/reddit/reddit/wiki/API
 	-This R package may help: 
