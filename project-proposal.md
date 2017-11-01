@@ -1,7 +1,7 @@
-# MATH 154 Project Proposal: Investigating the Popularity of  Scientific Phenomena on Social Media Platforms #
-## Sal Fu (Project Manager, Reporter) ##
-## Jerry Xuan (Task Manager, Director of Research) ##
-## Brian Lorenz (Facilitator, Director of Computation) ##
+## MATH 154 Project Proposal: Investigating the Popularity of  Scientific Phenomena on Social Media Platforms ##
+### Sal Fu (Project Manager, Reporter) 
+### Jerry Xuan (Task Manager, Director of Research) 
+### Brian Lorenz (Facilitator, Director of Computation) 
 ### Motivation
 
 Large numbers of scientific studies are published each day, and most go unnoticed. Some results, however, are much more noticed than others. Why? Why do some scientific results (gravitational wave detection, TRAPPIST-1 exoplanets) go viral? We wish to investigate what factors might influence the popularity of links about science on a social media platform. For example, some forms of presentation (video vs. text) may make an article more viral. The research field that the article pertains to could also matter. By investigating these factors, we might be able to help people better understand how to present their work and engage the public. 
