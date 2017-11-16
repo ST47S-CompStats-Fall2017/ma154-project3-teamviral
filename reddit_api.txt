@@ -1,0 +1,23 @@
+Created reddit account "compstatsf17" with password "Sagehen47!" (no quotes on either of those)
+
+registered app as compstats17_final_project
+client_secret: WAe0pEENwYhWu6tErofV7T7QOR4
+client_id: rNGwNS4hRPJDfw
+
+Connected app with the account compstatsf17, so now the app can access all functions of that user
+The "state" of the user is the pseudo-random string (no quotes) "fenwiosj" 
+The code created when authorizing the user is (no quotes) "yE0L1_clkxrpp0mVpVthf-KQWlo" 
+
+The python api wrapper can be found here: 
+https://github.com/praw-dev/praw
+
+Try runnning the code below:
+
+import praw
+reddit = praw.Reddit(client_id='rNGwNS4hRPJDfw', client_secret="WAe0pEENwYhWu6tErofV7T7QOR4",
+                     password='Sagehen47!', user_agent='python:rNGwNS4hRPJDfw:v1.0 (by /u/compstats17)',
+                     username='compstats17')
+for submission in reddit.front.hot(limit=256):
+    print(submission.score)
+
+
