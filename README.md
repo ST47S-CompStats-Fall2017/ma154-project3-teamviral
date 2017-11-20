@@ -53,6 +53,8 @@ We hope to deliver a series of visualizations illustrating the advantages of cer
 
 1. Yes, we have collected the majority of the data that we will need. We have accessed reddit's api through the Python Reddit API Wrapper (praw) and generated a .csv file containing our response variable (numbe of upvotes) and a variety of explanatory variables (domain, subfield, author, date/time created, etc...). The .csv file is on github if you are interested in looking at it. If we decide to add more explanatory variables, we can easily modify the python code to add more. For now, we have only collected data over a small timeframe (11 days) but plan to expand this to a few years once we know that everything is working. 
 
-2. 
+2. We need to wrangle the data to make it more readable for the functions that we are going to use. For example, we have retrieved the time that the post was created, but it would be most helpful if we can convert that time into a time of day. 
+
+We also need to figure out how to classify different sources (e.g. scientific, not scientific). Our initial thought was that we could pair the journals with their impact factors, but the sources that the posts draw from include journal articles as well as pop science articles. This is something we’re still looking into.
 
 3. We have accessed an api for a constantly updating website, so our model can change as new data comes in. We hope to use sentiment analysis to examine the type of language used in successful posts. Finally, we intend to use neural networks as one of our models - none of us have learned about these before. 
