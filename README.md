@@ -48,3 +48,11 @@ http://aclweb.org/anthology/P/P17/P17-1068.pdf
 ### Final Products
 
 We hope to deliver a series of visualizations illustrating the advantages of certain types of scientific communication in popularizing the scientific topic. From these visualizations, we will make suggestions for scientific communicators hoping to make their topic reach a broader audience. Based on our findings, we will try to make a predictive model that scores new studies and see how our predictions match with the results on social media platforms. Our recent work with random forests would lend itself nicely to generating such a model - we can make our response variable popularity and allow all other variables to be explanatory, then generate a random forest that predicts that popularity of an article based on its other factors. 
+
+### Project Update 11/20/2017
+
+1. Yes, we have collected the majority of the data that we will need. We have accessed reddit's api through the Python Reddit API Wrapper (praw) and generated a .csv file containing our response variable (numbe of upvotes) and a variety of explanatory variables (domain, subfield, author, date/time created, etc...). The .csv file is on github if you are interested in looking at it. If we decide to add more explanatory variables, we can easily modify the python code to add more. For now, we have only collected data over a small timeframe (11 days) but plan to expand this to a few years once we know that everything is working. 
+
+2. 
+
+3. We have accessed an api for a constantly updating website, so our model can change as new data comes in. We hope to use sentiment analysis to examine the type of language used in successful posts. Finally, we intend to use neural networks as one of our models - none of us have learned about these before. 
