@@ -58,3 +58,10 @@ We hope to deliver a series of visualizations illustrating the advantages of cer
 We also need to figure out how to classify different sources (e.g. scientific, not scientific). Our initial thought was that we could pair the journals with their impact factors, but the sources that the posts draw from include journal articles as well as pop science articles. This is something we’re still looking into.
 
 3. We have accessed an api for a constantly updating website, so our model can change as new data comes in. We hope to use sentiment analysis to examine the type of language used in successful posts. Finally, we intend to use neural networks as one of our models - none of us have learned about these before. 
+
+
+Hi, team viral!  Seems like you are well on your way.  You should check out the R package `lubridate` for wrangling date stuff (it is magical :).  Also, in terms of wrangling, you should think about wrangling as PART of the project (and *not* as the stuff you need to do before the project starts).  
+
+Seems like you have a lot of new stuff to learn.  I'd recommend doing one thing at a time.  I like the idea of group effort, but maybe all of you should investigate sentiment analysis so that you can talk to one another and bounce ideas around.  And then move to neural networks.
+
+You are in good shape!  Let me know if/when you have any questions.  -JH
