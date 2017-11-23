@@ -59,6 +59,7 @@ We also need to figure out how to classify different sources (e.g. scientific, n
 
 3. We have accessed an api for a constantly updating website, so our model can change as new data comes in. We hope to use sentiment analysis to examine the type of language used in successful posts. Finally, we intend to use neural networks as one of our models - none of us have learned about these before. 
 
+### Prof Hardin comments on update
 
 Hi, team viral!  Seems like you are well on your way.  You should check out the R package `lubridate` for wrangling date stuff (it is magical :).  Also, in terms of wrangling, you should think about wrangling as PART of the project (and *not* as the stuff you need to do before the project starts).  
 
