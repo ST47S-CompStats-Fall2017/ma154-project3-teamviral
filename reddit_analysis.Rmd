@@ -1,0 +1,60 @@
+---
+title: "Investigating the Popularity of Scientific Phenomena on Social Media Platforms"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, 
+                      fig.width=7, fig.height=3, fig.align = "center")
+```
+
+##Data input
+Data are gathered from reddit using the Python Reddit API Wrapper (praw) in the file "reddit_api.py". The data are stored in "reddit_df.csv".
+```{r}
+#Read the reddit data into a dataframe
+library(readr)
+reddit_df <- read_csv("reddit_df.csv")
+```
+
+```{r}
+#Wrangle the dates into a more readable format
+require(lubridate)
+require(dplyr)
+
+#Store all of the POSIX dates into a vector
+dates <- as.POSIXct(reddit_df$created_utc,origin = "1970-01-01",tz = "UTC")
+
+#Use lubridate to read y,m,d,h from that vector
+reddit_df <- reddit_df %>%  
+  mutate(post_year = year(dates),post_month = month(dates), post_day = day(dates), post_hour = hour(dates))
+```
+
+```{r}
+library(stringr)
+
+#Filter by removing the Ask Me Anything (AMA) threads and the subreddit discussion
+  #threads since these are not studies. 
+reddit_df <- reddit_df %>%
+  filter(!str_detect(subfield, " AMA")) %>%
+  filter(subfield != "Subreddit Discussion")
+
+#Display the remaining subfields
+count(reddit_df,subfield)
+```
+
+```{r}
+#Here is the dataframe in its current state:
+head(reddit_df)
+```
+
+
+```{r}
+require(ggplot2)
+reddit_df %>%
+  ggplot(aes(x=post_hour,y=log10(upvotes))) + geom_point() +
+  ggtitle("Number of Upvotes by Post Time of Day") +
+  xlab("Hour Posted (UTC)") + ylab("log(Number of Upvotes)") 
+```
+
