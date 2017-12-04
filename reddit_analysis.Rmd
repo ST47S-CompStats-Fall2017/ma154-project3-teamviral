@@ -58,3 +58,18 @@ reddit_df %>%
   xlab("Hour Posted (UTC)") + ylab("log(Number of Upvotes)") 
 ```
 
+```{r}
+high_h_index <- reddit_df %>% filter(journal_h_index=='high')
+```
+
+```{r}
+hist(high_h_index$upvotes)
+```
+
+```{r}
+reddit_df %>% group_by(image) %>% summarize(n())
+```
+
+```{r}
+unique(reddit_df$author_flair)
+```
