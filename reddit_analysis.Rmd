@@ -100,9 +100,11 @@ reddit.test <- reddit_df[-c(inTrain),]
 rf.reddit <- train(upvotes ~., data=reddit.train, method="rf",
                       trControl = trainControl(method="oob"),
                       ntree=500, tuneGrid = data.frame(mtry=7),
-                      importance = TRUE)
-```
+                      importance = TRUE, na.action = na.exclude)
 
+rf.reddit$finalModel
+varImp(rf.reddit$finalModel)
+```
 
 
 
