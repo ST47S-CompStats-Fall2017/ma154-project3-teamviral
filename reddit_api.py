@@ -28,10 +28,9 @@ reddit = praw.Reddit(client_id='rNGwNS4hRPJDfw', client_secret="WAe0pEENwYhWu6tE
 #for submission in reddit.front.hot(limit=10):
 
 ## Convert to epoch timestamp via https://www.epochconverter.com/
-# The 2 month interval here gives ~1900 rows of data
-# Sept 20, 2017
-start_time = 1511149287 - 1000000
-# Nov 20, 2017
+# The 3 month interval here gives  rows of data
+
+start_time = 1504582127
 end_time = 1511149287
 
 #this is the list of dictionary names that we can use to pull data from vars(submission)
@@ -60,6 +59,7 @@ link_karma_list = []
 comment_karma_list = []
 author_created_list = []
 author_flair_list = []
+author_flair_binary_list = []
 total_upvotes_list = []
 created_utc_list = []
 num_comments_list = []
@@ -78,10 +78,10 @@ for submission in reddit.subreddit('science').submissions(
     # with different sizes. Thus, making preview-images a binary variable makes more sense
     try:
         preview = vars(submission)['preview']['images'][0]
-        image_list.append('YES')
+        image_list.append('yes')
     except:
         print ('No images for this post')
-        image_list.append('NO')
+        image_list.append('no')
 
     # Populate lists. I had to encode these to make the .to_csv work.
     id_list.append(submission.id.encode('utf-8'))
@@ -104,7 +104,7 @@ for submission in reddit.subreddit('science').submissions(
                    'thelancet.com', 'jamanetwork.com', 'aps.org', 'acs.org', 'circ.ahajournals.org']
 
     if any(substring in domain for substring in h_index_500):
-        print ('high')
+        #print ('high')
         #pprint.pprint(vars(submission), width=1)
         journal_h_index_list.append('high')
     else:
@@ -126,24 +126,33 @@ for submission in reddit.subreddit('science').submissions(
         link_karma_list.append(user.link_karma)
     except:
         print ('error in link karma')
-        link_karma_list.append(0)
+        link_karma_list.append('NA')
     try:
         comment_karma_list.append(user.comment_karma)
     except:
-        comment_karma_list.append(0)
+        comment_karma_list.append('NA')
         print ('error in comment karma')
     try:
         author_created_list.append(user.created_utc)
     except:
-        author_created_list.append(0)
+        author_created_list.append('NA')
         print ('error in author created')
 
-    author_flair_list.append(vars(submission)['author_flair_css_class'])
+    author_flair = vars(submission)['author_flair_css_class']
+    if not author_flair == None:
+        if len(author_flair) > 0:
+            author_flair_binary = 'yes'
+        else:
+            author_flair_binary = 'no'
+    else:
+        author_flair_binary = 'no'
+
+    author_flair_binary_list.append(author_flair_binary)
+    author_flair_list.append(author_flair)
     total_upvotes_list.append(vars(submission)['ups'])
     created_utc_list.append(vars(submission)['created_utc'])
     num_comments_list.append(vars(submission)['num_comments'])
     gilded_list.append(vars(submission)['gilded'])
-
 
 # Consolidate lists into one pandas data frame
 reddit_df = pd.DataFrame(
@@ -151,7 +160,6 @@ reddit_df = pd.DataFrame(
      'url': url_list,
      'title': title_list,
      'title_len': title_len_list,
-     'score': score_list,
      'domain': domain_list,
      'journal_h_index': journal_h_index_list,
      'subfield': subfield_list,
@@ -160,6 +168,7 @@ reddit_df = pd.DataFrame(
      'comment_karma': comment_karma_list,
      'author_created_date': author_created_list,
      'author_flair': author_flair_list,
+     'author_flair_binary': author_flair_binary_list,
      'upvotes': total_upvotes_list,
      'created_utc': created_utc_list,
      'num_comments': num_comments_list,
