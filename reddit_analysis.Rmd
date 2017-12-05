@@ -80,6 +80,16 @@ reddit_df <- reddit_df %>%
   select(-X1,-title,-author,-author_created_date,-id,-created_utc,-domain,-url)
 ```
 
+```{r}
+bef_rm <- nrow(reddit_df)
+
+#Remove missing values
+reddit_df <- reddit_df[complete.cases(reddit_df),]
+aft_rm <- nrow(reddit_df)
+
+paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
+```
+
 
 ```{r}
 #Packages required for trees
@@ -100,7 +110,8 @@ reddit.test <- reddit_df[-c(inTrain),]
 rf.reddit <- train(upvotes ~., data=reddit.train, method="rf",
                       trControl = trainControl(method="oob"),
                       ntree=500, tuneGrid = data.frame(mtry=7),
-                      importance = TRUE, na.action = na.exclude)
+                      importance = TRUE)
+#na.action = na.exclude
 
 rf.reddit$finalModel
 varImp(rf.reddit$finalModel)
