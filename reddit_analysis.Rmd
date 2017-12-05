@@ -73,3 +73,36 @@ reddit_df %>% group_by(image) %>% summarize(n())
 ```{r}
 unique(reddit_df$author_flair)
 ```
+
+```{r}
+#To prepare for model building, we remove unnecessary columns:
+reddit_df <- reddit_df %>%
+  select(-X1,-title,-author,-author_created_date,-id,-created_utc,-domain,-url)
+```
+
+
+```{r}
+#Packages required for trees
+require(caret)
+require(rpart)
+
+#Set the seed for reproducibility
+set.seed(47)
+
+#Split the data into test and training
+inTrain <- createDataPartition(y = reddit_df$upvotes, p=0.80, list=FALSE)
+reddit.train <- reddit_df[inTrain,]
+reddit.test <- reddit_df[-c(inTrain),]
+```
+
+```{r}
+#Build the random forest model
+rf.reddit <- train(upvotes ~., data=reddit.train, method="rf",
+                      trControl = trainControl(method="oob"),
+                      ntree=500, tuneGrid = data.frame(mtry=7),
+                      importance = TRUE)
+```
+
+
+
+
