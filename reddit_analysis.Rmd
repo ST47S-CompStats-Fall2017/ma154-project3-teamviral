@@ -24,6 +24,8 @@ library(readr)
 reddit_df <- read_csv("reddit_df.csv")
 ```
 
+After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We use the code below to translate that metric of time into year, date, and hour.
+
 ```{r}
 #Wrangle the dates into a more readable format
 require(lubridate)
@@ -37,24 +39,7 @@ reddit_df <- reddit_df %>%
   mutate(post_year = year(dates),post_month = month(dates), post_day = day(dates), post_hour = hour(dates))
 ```
 
-```{r}
-library(stringr)
-
-#Filter by removing the Ask Me Anything (AMA) threads and the subreddit discussion
-  #threads since these are not studies. 
-reddit_df <- reddit_df %>%
-  filter(!str_detect(subfield, " AMA")) %>%
-  filter(subfield != "Subreddit Discussion") %>%
-  filter(subfield != "Subreddit Feature")
-
-#Display the remaining subfields
-count(reddit_df,subfield)
-```
-
-```{r}
-#Here is the dataframe in its current state:
-head(reddit_df)
-```
+After obtaining that information, we create a categorical variable for "time" to categorize the time of day that the post was created into "Day", "Morning", and "Night". This step was necessary because otherwise, the classification algorithm would not classify "23" and "0" as the portion of the day (time wise), which would mess with our results. 
 
 ```{r}
 #Create a new column for categorical time of day
@@ -74,6 +59,27 @@ mk_cat_day <- function(h)
 reddit_df <- reddit_df %>%
   mutate(cat_post_hour = mk_cat_time(post_hour)) %>%
   mutate(cat_post_day = mk_cat_day(post_day)) 
+```
+
+Next, we clean up the data in order to remove posts that do not share media content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
+
+```{r}
+library(stringr)
+
+#Filter by removing the Ask Me Anything (AMA) threads and the subreddit discussion
+  #threads since these are not studies. 
+reddit_df <- reddit_df %>%
+  filter(!str_detect(subfield, " AMA")) %>%
+  filter(subfield != "Subreddit Discussion") %>%
+  filter(subfield != "Subreddit Feature")
+
+#Display the remaining subfields
+count(reddit_df,subfield)
+```
+
+```{r}
+#Here is the dataframe in its current state:
+head(reddit_df)
 ```
 
 ```{r}
