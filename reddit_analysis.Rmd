@@ -175,12 +175,37 @@ reddit.test <- reddit_df[-c(inTrain),]
 ```
 
 ```{r}
+reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
+```
+
+
+```{r}
+# tried using a kNN model... don't think it works that well.
+
+set.seed(47)
+fitControl <- trainControl(method="cv")
+
+knn.reddit <- train(cat_upvotes ~., data=reddit.train, method="knn", trControl = fitControl,
+                    tuneGrid= data.frame(k=c(1,3,5,7,9,11,13,15,17,19,21)))
+```
+
+```{r}
+knn.reddit
+```
+
+```{r}
+confusionMatrix(data=predict(knn.reddit, newdata = reddit.test), 
+                reference = reddit.test$cat_upvotes)
+```
+
+
+
+```{r}
 #Build the random forest model
 rf.reddit <- train(cat_upvotes ~., data=reddit.train, method="rf",
                       trControl = trainControl(method="oob"),
                       ntree=500, tuneGrid = data.frame(mtry=7),
                       importance = TRUE,na.action = na.exclude)
-#
 
 rf.reddit$finalModel
 ```
@@ -201,7 +226,7 @@ require(rpart.plot)
 #Build the random forest model
 tr.reddit <- train(cat_upvotes ~., data=reddit.train, method="rpart2",
                       trControl = trainControl(method="none"),
-                      tuneGrid= data.frame(maxdepth=10),)
+                      tuneGrid= data.frame(maxdepth=10))
 
 tr.reddit$finalModel
 rpart.plot(tr.reddit$finalModel)
