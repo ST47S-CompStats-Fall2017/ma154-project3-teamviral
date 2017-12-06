@@ -10,8 +10,14 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE,
                       fig.width=7, fig.height=3, fig.align = "center")
 ```
 
+##Motivation
+
 ##Data input
-Data are gathered from reddit using the Python Reddit API Wrapper (praw) in the file "reddit_api.py". The data are stored in "reddit_df.csv".
+
+Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back about six months. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
+
+We store the resulting dataframe in "reddit_df.csv", and read it in below: 
+
 ```{r}
 #Read the reddit data into a dataframe
 library(readr)
@@ -171,6 +177,10 @@ rf.reddit <- train(cat_upvotes ~., data=reddit.train, method="rf",
 #
 
 rf.reddit$finalModel
+```
+
+```{r}
+varImp(rf.reddit$finalModel)
 ```
 
 ```{r}
