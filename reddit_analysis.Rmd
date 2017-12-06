@@ -61,6 +61,11 @@ reddit_df <- reddit_df %>%
   mutate(cat_post_day = mk_cat_day(post_day)) 
 ```
 
+```{r}
+reddit_df %>% ggplot(aes(x=post_hour,y=title_len,color=cat_upvotes)) + geom_point()
+```
+
+
 Next, we clean up the data in order to remove posts that do not share media content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
 
 ```{r}
