@@ -12,16 +12,10 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE,
 
 ##Motivation
 
-look for random forests for unbalanced data 
-add 1 and take the log
-upsampling/downsampling
-
-20% small, 80% big
-
-try median method...?
 
 
-##Data input
+
+## Data Wrangling
 
 Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back about six months. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
 
@@ -35,6 +29,8 @@ reddit_df <- read_csv("reddit_df.csv")
 ```
 
 After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We use the code below to translate that metric of time into year, date, and hour.
+
+##Modifications to Date Column
 
 ```{r}
 #Wrangle the dates into a more readable format
@@ -74,7 +70,6 @@ reddit_df <- reddit_df %>%
 ```{r}
 reddit_df %>% ggplot(aes(x=post_hour,y=title_len,color=cat_upvotes)) + geom_point()
 ```
-
 
 Next, we clean up the data in order to remove posts that do not share media content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
 
@@ -244,6 +239,7 @@ reddit.train.final <- rbind(reddit.train.low, reddit.train.high, reddit.train.mo
 reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
 ```
 
+## Making Models
 
 ```{r}
 # tried using a kNN model... don't think it works that well.
