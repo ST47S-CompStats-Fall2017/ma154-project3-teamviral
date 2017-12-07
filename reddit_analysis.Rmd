@@ -25,7 +25,8 @@ We store the resulting dataframe in "reddit_df.csv", and read it in below:
 #Read the reddit data into a dataframe
 library(readr)
 require(ggplot2)
-reddit_df <- read_csv("reddit_df.csv")
+reddit_df <- read_csv("reddit_df_sent.csv")
+reddit_df_read <- reddit_df
 ```
 
 After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We use the code below to translate that metric of time into year, date, and hour.
@@ -92,7 +93,7 @@ count(reddit_df,subfield)
 ```{r}
 mk_cat_subfield <- function(field)
 {
-  ifelse(field == "Biology" | field =="Health" | field =="Cancer" | field =="Medicine" | field =="Animal Science" | field =="Paleontology" | field =="Epidemiology", "Biology", ifelse(field =="Psychology" | field =="Neuroscience" | field =="Social Science" | field =="Anthropology", "Psychology", ifelse(field =="Chemistry" | field =="Nanoscience", "Chemistry", ifelse(field =="Geology" | field =="Astronomy" | field =="Physics" | field =="Engineering" | field =="Computer Science", "Phys/Astro", "Environment"))))
+  ifelse(field == "Biology" | field =="Health" | field =="Cancer" | field =="Medicine" | field =="Animal Science" | field =="Paleontology" | field =="Epidemiology", "Life Science", ifelse(field =="Psychology" | field =="Neuroscience" | field =="Social Science" | field =="Anthropology", "Psychology", ifelse(field =="Chemistry" | field =="Nanoscience", "Chemistry", ifelse(field =="Geology" | field =="Astronomy" | field =="Physics" | field =="Engineering" | field =="Computer Science", "Phys/Astro", "Environment"))))
 }
 reddit_df <- reddit_df %>%
   mutate(cat_subfield = mk_cat_subfield(subfield)) %>%
@@ -120,11 +121,6 @@ reddit_df$cat_post_day <- factor(reddit_df$cat_post_day)
 ```
 
 ```{r}
-#Sentiment Analysis on title
-
-```
-
-```{r}
 reddit_df %>%
   ggplot(aes(x=post_hour,y=log10(upvotes))) + geom_point() +
   ggtitle("Number of Upvotes by Post Time of Day") +
@@ -147,29 +143,10 @@ reddit_df %>% group_by(image) %>% summarize(n())
 unique(reddit_df$author_flair)
 ```
 
-Find longest word in every title, and mean word length. Add these two variables to the dataframe
-```{r}
-c_test <- str_split(reddit_df$title,boundary("word"))
-max_vec <- c()
-mean_vec <- c()
-
-for (i in 1:length(c_test)){
-  title_vec <- unlist(c_test[i])
-  max_word_len <- max(nchar(title_vec))
-  mean_word_len <- mean(nchar(title_vec))
-  max_vec <- c(max_vec, max_word_len)
-  mean_vec <- c(mean_vec, mean_word_len)
-}
-#c_test <- gsub("<", "", c_test, fixed=TRUE)
-reddit_df$max_title_length <- max_vec
-reddit_df$mean_title_length <- mean_vec
-```
-
-
 ```{r}
 #To prepare for model building, we remove unnecessary columns:
 reddit_df <- reddit_df %>%
-  select(-X1,-title,-author,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour)
+  select(-X1,-author,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour,-num_comments,-gilded,-link_karma,-comment_karma,-title,-X1_1)
 ```
 
 ```{r}
@@ -180,12 +157,6 @@ reddit_df <- reddit_df[complete.cases(reddit_df),]
 aft_rm <- nrow(reddit_df)
 
 paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
-```
-
-```{r}
-#Remove variables that are likely coupled with the response (provide plots)
-reddit_df <- reddit_df %>%
-  select(-num_comments,-gilded,-link_karma,-comment_karma)
 ```
 
 ```{r}
@@ -262,7 +233,7 @@ reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
 #Build the random forest model
 rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
                       trControl = trainControl(method="oob"),
-                      ntree=1000, tuneGrid = data.frame(mtry=c(1,3,5,7,9,11)),
+                      ntree=1000, tuneGrid = data.frame(mtry=c(3,5,7,9,11)),
                       importance = TRUE,na.action = na.exclude)
 
 rf.reddit$finalModel
@@ -275,35 +246,10 @@ confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = redd
 ```
 
 ```{r}
-varImp(rf.reddit)
+varImp(rf.reddit,scale=FALSE)
 ```
 
 ```{r}
-# tried using a kNN model... don't think it works that well.
-
-set.seed(47)
-fitControl <- trainControl(method="cv")
-knn.reddit <- train(cat_upvotes ~., data=reddit.train, method="knn", trControl = fitControl,
-                    tuneGrid= data.frame(k=c(1,3,5,7,9,11)))
+reddit_df_read %>%
+  arrange(desc(title_sent))
 ```
-
-```{r}
-knn.reddit
-```
-
-```{r}
-confusionMatrix(data=predict(knn.reddit, newdata = reddit.test), 
-                reference = reddit.test$cat_upvotes)
-```
-
-```{r}
-require(rpart.plot)
-#Build the random forest model
-tr.reddit <- train(cat_upvotes ~., data=reddit.train, method="rpart2",
-                      trControl = trainControl(method="none"),
-                      tuneGrid= data.frame(maxdepth=10))
-
-tr.reddit$finalModel
-rpart.plot(tr.reddit$finalModel)
-```
-

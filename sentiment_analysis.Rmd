@@ -1,0 +1,86 @@
+---
+title: "sentiment_analysis"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, 
+                      fig.width=7, fig.height=3, fig.align = "center")
+```
+
+```{r}
+library(readr)
+require(ggplot2)
+library(stringr)
+library("splitstackshape")
+require(lubridate)
+require(dplyr)
+reddit_df <- read_csv("reddit_df.csv")
+```
+
+```{r}
+#Sentiment Analysis on title
+#Read the SentiWordNet file:
+SentiWordNet <- read_delim("SentiWordNet_3.0.0_20130122.txt","\t",skip = 26, escape_double = FALSE, trim_ws = TRUE)
+
+#Save a list of stopwords (credit to xpo6.com)
+stopwords <- c("a", "about", "above", "above", "across", "after", "afterwards", "again", "against", "all", "almost", "along", "already", "also","although","always","am","among", "amongst", "amoungst", "amount",  "an", "and", "another", "any","anyhow","anyone","anything","anyway", "anywhere", "are", "around", "as",  "at", "back","be","became", "because","become","becomes", "becoming", "been", "before", "beforehand", "behind", "being", "below", "beside", "besides", "between", "beyond", "both", "bottom","but", "by", "call", "can", "cannot", "cant", "co", "con", "could", "couldnt", "cry", "de", "detail", "do", "done", "down", "due", "during", "each", "eg", "eight", "either", "eleven","else", "elsewhere", "empty", "enough", "etc", "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few", "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former", "formerly", "forty", "found", "four", "from", "front", "full", "further", "get", "give", "go", "had", "has", "hasnt", "have", "he", "hence", "her", "here", "hereafter", "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however", "hundred", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its", "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may", "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move", "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless", "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now", "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other", "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own","part", "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed", "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since", "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime", "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that", "the", "their", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "therefore", "therein", "thereupon", "these", "they", "thickv", "thin", "third", "this", "those", "though", "three", "through", "throughout", "thru", "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty", "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well", "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while", "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "with", "within", "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves", "the")
+```
+
+```{r}
+#Fix sentiWordNet dataframe
+library("splitstackshape")
+SentiWordNet <- cSplit(SentiWordNet,"SynsetTerms"," ",direction = "long")
+SentiWordNet$SynsetTerms <- as.character(SentiWordNet$SynsetTerms) 
+```
+
+```{r}
+c_test <- str_split(reddit_df$title,boundary("word"))
+max_vec <- c()
+mean_vec <- c()
+titleSent_vec <- c()
+
+for (i in 1:length(c_test)){
+  #Compute maximum and mean word length
+  title_vec <- unlist(c_test[i])
+  max_word_len <- max(nchar(title_vec))
+  mean_word_len <- mean(nchar(title_vec))
+  max_vec <- c(max_vec, max_word_len)
+  mean_vec <- c(mean_vec, mean_word_len)
+
+  #Sentiment Analysis
+  titleScore <- c()
+  for (word in title_vec){
+    if (word %in% stopwords)
+    {
+      
+    }
+    else
+    {
+      word <- str_to_lower(word)
+      #Add #1 to get first instance of word
+      word <- paste(word, "#1",sep = "")
+      #Find the word matrix for the word
+      wordMatrix <- SentiWordNet[grep(word, SentiWordNet$SynsetTerms),]
+      #Finds the shortest entry in the matrix (gives "thing#1" instead of "anything#1")
+      wordrow <- wordMatrix[nchar(wordMatrix$SynsetTerms) == min(nchar(wordMatrix$SynsetTerms)),][1,]
+      #Compte the score for this word
+      wordScore <- wordrow$PosScore - wordrow$NegScore
+      #Append to vector for this title
+      titleScore <- c(titleScore, wordScore)
+    }
+  }
+  #Compute and append mean sentiment score for this title
+  titleSent_vec <- c(titleSent_vec, mean(titleScore,na.rm=TRUE))
+}
+#c_test <- gsub("<", "", c_test, fixed=TRUE)
+reddit_df$max_title_length <- max_vec
+reddit_df$mean_title_length <- mean_vec
+reddit_df$title_sent <- titleSent_vec
+```
+
+```{r}
+write.csv(reddit_df, file = "reddit_df_sent.csv")
+```
+
+
