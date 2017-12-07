@@ -28,10 +28,10 @@ reddit = praw.Reddit(client_id='rNGwNS4hRPJDfw', client_secret="WAe0pEENwYhWu6tE
 #for submission in reddit.front.hot(limit=10):
 
 ## Convert to epoch timestamp via https://www.epochconverter.com/
-# The 3 month interval here gives  rows of data
+## Retrieving data from the past 2 years:
 
-start_time = 1504582127
-end_time = 1511149287
+start_time = 1449400000
+end_time = 1512614932
 
 #this is the list of dictionary names that we can use to pull data from vars(submission)
 
@@ -67,10 +67,11 @@ gilded_list = []
 image_list = []
 journal_h_index_list = []
 
+count = 0
 ## Searching posts from a given period of time in the SCIENCE subreddit
 for submission in reddit.subreddit('science').submissions(
         start=start_time, end=end_time, extra_query=None):
-
+	count = count + 1
     # Print dictionary prettier
     #pprint.pprint(vars(submission), width=1)
 
@@ -94,7 +95,7 @@ for submission in reddit.subreddit('science').submissions(
 
     domain = vars(submission)['domain']
     domain_list.append(domain)
-    print (domain)
+    # print (domain)
     # Binary variable for high impact journals and low impact journal/mere websites
     # Journal impact determined by its h-index. See here for a ranking:
     # http://www.scimagojr.com/journalrank.php?order=h&ord=desc
@@ -125,18 +126,10 @@ for submission in reddit.subreddit('science').submissions(
     try:
         link_karma_list.append(user.link_karma)
     except:
-        print ('error in link karma')
+        print ('Error in author info (user does not exist anymore).')
         link_karma_list.append('NA')
-    try:
-        comment_karma_list.append(user.comment_karma)
-    except:
         comment_karma_list.append('NA')
-        print ('error in comment karma')
-    try:
-        author_created_list.append(user.created_utc)
-    except:
         author_created_list.append('NA')
-        print ('error in author created')
 
     author_flair = vars(submission)['author_flair_css_class']
     if not author_flair == None:
@@ -150,7 +143,11 @@ for submission in reddit.subreddit('science').submissions(
     author_flair_binary_list.append(author_flair_binary)
     author_flair_list.append(author_flair)
     total_upvotes_list.append(vars(submission)['ups'])
-    created_utc_list.append(vars(submission)['created_utc'])
+    created_utc = vars(submission)['created_utc']
+    created_utc_list.append(created_utc)
+    if count % 100 == 0:
+    	print ('Currently at epoch time of:')
+    	print (created_utc)
     num_comments_list.append(vars(submission)['num_comments'])
     gilded_list.append(vars(submission)['gilded'])
 
