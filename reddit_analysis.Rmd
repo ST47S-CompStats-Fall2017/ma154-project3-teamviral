@@ -68,7 +68,7 @@ reddit_df <- reddit_df %>%
 ```
 
 ```{r}
-reddit_df %>% ggplot(aes(x=post_hour,y=title_len,color=cat_upvotes)) + geom_point()
+#reddit_df %>% ggplot(aes(x=post_hour,y=title_len,color=cat_upvotes)) + geom_point()
 ```
 
 Next, we clean up the data in order to remove posts that do not share media content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
@@ -81,10 +81,24 @@ library(stringr)
 reddit_df <- reddit_df %>%
   filter(!str_detect(subfield, " AMA")) %>%
   filter(subfield != "Subreddit Discussion") %>%
-  filter(subfield != "Subreddit Feature")
+  filter(subfield != "Subreddit Feature") %>%
+  filter(subfield != "Deaths + injuries") %>%
+  filter(subfield != "Mathematics")
 
 #Display the remaining subfields
 count(reddit_df,subfield)
+```
+
+```{r}
+mk_cat_subfield <- function(field)
+{
+  ifelse(field == "Biology" | field =="Health" | field =="Cancer" | field =="Medicine" | field =="Animal Science" | field =="Paleontology" | field =="Epidemiology", "Biology", ifelse(field =="Psychology" | field =="Neuroscience" | field =="Social Science" | field =="Anthropology", "Psychology", ifelse(field =="Chemistry" | field =="Nanoscience", "Chemistry", ifelse(field =="Geology" | field =="Astronomy" | field =="Physics" | field =="Engineering" | field =="Computer Science", "Phys/Astro", "Environment"))))
+}
+reddit_df <- reddit_df %>%
+  mutate(cat_subfield = mk_cat_subfield(subfield)) %>%
+  select(-subfield)
+
+reddit_df$cat_subfield <- factor(reddit_df$cat_subfield)
 ```
 
 ```{r}
@@ -97,7 +111,7 @@ head(reddit_df)
 reddit_df$author_flair_binary <- factor(reddit_df$author_flair_binary)
 reddit_df$image <- factor(reddit_df$image)
 reddit_df$journal_h_index <- factor(reddit_df$journal_h_index)
-reddit_df$subfield <- factor(reddit_df$subfield)
+#reddit_df$subfield <- factor(reddit_df$subfield)
 #Uncomment year if analyzing more than 1 year, rf requires at least 2 levels per factor
 #reddit_df$post_year <- factor(reddit_df$post_year)
 reddit_df$post_month <- factor(reddit_df$post_month)
@@ -163,14 +177,11 @@ qplot(reddit_df$upvotes,
 ```
 
 ```{r}
-###Only run this chunk if we want categorical upvotes. If we cahnge back to regression, 
-#We must change the response variables in the train functions in the chunks below
-
 #Create a new column for categorical upvotes
-#Ranges: 10000+ Very high     1000+ high     100+ moderate    0+ low
+#Ranges: 1000+ high   0+ low
 mk_cat_upvotes <- function(upv)
 {
-  ifelse(upv>10000, "Very High", ifelse(upv>1000, "High", ifelse(upv>100, "Moderate", "Low")))
+  ifelse(upv>1000, "High", "Low")
 }
 reddit_df <- reddit_df %>%
   mutate(cat_upvotes = mk_cat_upvotes(upvotes)) %>%
@@ -195,44 +206,27 @@ reddit.test <- reddit_df[-c(inTrain),]
 
 ```{r}
 # Look at distribution between categories
-sum(reddit.train['cat_upvotes'] == "Very High")
 sum(reddit.train['cat_upvotes'] == "High")
-sum(reddit.train['cat_upvotes'] == "Moderate")
 sum(reddit.train['cat_upvotes'] == "Low")
-#sum(reddit.train['cat_upvotes'] == "Very Low")
-
-# ~2% of the data has 0 upvotes. Maybe we could remove these?
 ```
 
 ```{r}
-### Sample data such that there is a 1:1:1:1 ratio in number of observations for each category.
+### Sample data such that there is a 1:1 ratio in number of observations for each category.
 
-num_vhigh_upvote <- sum(reddit.train['cat_upvotes'] == "Very High")
+#Count the number of high upvotes
+num_high_upvote <- sum(reddit.train['cat_upvotes'] == "High")
 
-reddit.train.vhigh <- subset(reddit.train, reddit.train['cat_upvotes'] == "Very High")
 reddit.train.high <- subset(reddit.train, reddit.train['cat_upvotes'] == "High")
-reddit.train.mod <- subset(reddit.train, reddit.train['cat_upvotes'] == "Moderate")
 reddit.train.low <- subset(reddit.train, reddit.train['cat_upvotes'] == "Low")
-#reddit.train.vlow <- subset(reddit.train, reddit.train['cat_upvotes'] == "Very Low")
 
-
-#inTrain.vlow <- createDataPartition(y = reddit.train.vlow$cat_upvotes, #p=num_vhigh_upvote/dim(reddit.train.vlow)[1], list=FALSE)
-#reddit.train.vlow <- reddit.train.vlow[inTrain.vlow,]
-
-inTrain.low <- createDataPartition(y = reddit.train.low$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.low)[1], list=FALSE)
+#Select an equal proportion of high and low upvotes
+inTrain.low <- createDataPartition(y = reddit.train.low$cat_upvotes, p=num_high_upvote/dim(reddit.train.low)[1], list=FALSE)
 reddit.train.low <- reddit.train.low[inTrain.low,]
-
-inTrain.mod <- createDataPartition(y = reddit.train.mod$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.mod)[1], list=FALSE)
-reddit.train.mod <- reddit.train.mod[inTrain.mod,]
-
-inTrain.high <- createDataPartition(y = reddit.train.high$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.high)[1], list=FALSE)
-reddit.train.high <- reddit.train.high[inTrain.high,]
-
 ```
 
 ```{r}
-### Combine the 4 dataframes into the final training data
-reddit.train.final <- rbind(reddit.train.low, reddit.train.high, reddit.train.mod, reddit.train.vhigh)
+### Combine the 2 dataframes into the final training data
+reddit.train.final <- rbind(reddit.train.low, reddit.train.high)
 ```
 
 ```{r}
@@ -240,6 +234,26 @@ reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
 ```
 
 ## Making Models
+
+```{r}
+#Build the random forest model
+rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
+                      trControl = trainControl(method="oob"),
+                      ntree=1000, tuneGrid = data.frame(mtry=c(1,3,5,7,9,11)),
+                      importance = TRUE,na.action = na.exclude)
+
+rf.reddit$finalModel
+```
+
+RF on test data
+```{r}
+#mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
+confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = reddit.test$cat_upvotes)
+```
+
+```{r}
+varImp(rf.reddit)
+```
 
 ```{r}
 # tried using a kNN model... don't think it works that well.
@@ -257,35 +271,6 @@ knn.reddit
 ```{r}
 confusionMatrix(data=predict(knn.reddit, newdata = reddit.test), 
                 reference = reddit.test$cat_upvotes)
-```
-
-
-
-```{r}
-#Build the random forest model
-rf.reddit <- train(cat_upvotes ~., data=reddit.train, method="rf",
-                      trControl = trainControl(method="oob"),
-                      ntree=500, tuneGrid = data.frame(mtry=7),
-                      importance = TRUE,na.action = na.exclude)
-
-rf.reddit$finalModel
-```
-
-RF on test data
-```{r}
-#mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
-confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = reddit.test$cat_upvotes)
-```
-
-```{r}
-varImp(rf.reddit$finalModel)
-```
-
-```{r}
-varImp(rf.reddit$finalModel)
-imp <- varImp(rf.reddit$finalModel)
-data.frame(rownames(imp),imp$Overall) %>%
-  arrange(desc(imp.Overall))
 ```
 
 ```{r}
