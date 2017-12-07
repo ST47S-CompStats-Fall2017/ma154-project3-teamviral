@@ -30,6 +30,7 @@ We store the resulting dataframe in "reddit_df.csv", and read it in below:
 ```{r}
 #Read the reddit data into a dataframe
 library(readr)
+require(ggplot2)
 reddit_df <- read_csv("reddit_df.csv")
 ```
 
@@ -111,7 +112,6 @@ reddit_df$cat_post_day <- factor(reddit_df$cat_post_day)
 ```
 
 ```{r}
-require(ggplot2)
 reddit_df %>%
   ggplot(aes(x=post_hour,y=log10(upvotes))) + geom_point() +
   ggtitle("Number of Upvotes by Post Time of Day") +
@@ -156,6 +156,16 @@ reddit_df <- reddit_df %>%
   select(-num_comments,-gilded,-link_karma,-comment_karma)
 ```
 
+```{r}
+## Plot a histogram of upvotes. This suggests it might make sense to use ~25 (instead of 100) as a cutoff, since almost half the data is < 25.
+qplot(reddit_df$upvotes,
+      geom="histogram",
+      binwidth = 25,
+      fill=I("blue"), 
+      col=I("red"), 
+      alpha=I(.2),
+      xlim=c(0,1000))
+```
 
 ```{r}
 ###Only run this chunk if we want categorical upvotes. If we cahnge back to regression, 
@@ -189,6 +199,48 @@ reddit.test <- reddit_df[-c(inTrain),]
 ```
 
 ```{r}
+# Look at distribution between categories
+sum(reddit.train['cat_upvotes'] == "Very High")
+sum(reddit.train['cat_upvotes'] == "High")
+sum(reddit.train['cat_upvotes'] == "Moderate")
+sum(reddit.train['cat_upvotes'] == "Low")
+#sum(reddit.train['cat_upvotes'] == "Very Low")
+
+# ~2% of the data has 0 upvotes. Maybe we could remove these?
+```
+
+```{r}
+### Sample data such that there is a 1:1:1:1 ratio in number of observations for each category.
+
+num_vhigh_upvote <- sum(reddit.train['cat_upvotes'] == "Very High")
+
+reddit.train.vhigh <- subset(reddit.train, reddit.train['cat_upvotes'] == "Very High")
+reddit.train.high <- subset(reddit.train, reddit.train['cat_upvotes'] == "High")
+reddit.train.mod <- subset(reddit.train, reddit.train['cat_upvotes'] == "Moderate")
+reddit.train.low <- subset(reddit.train, reddit.train['cat_upvotes'] == "Low")
+#reddit.train.vlow <- subset(reddit.train, reddit.train['cat_upvotes'] == "Very Low")
+
+
+#inTrain.vlow <- createDataPartition(y = reddit.train.vlow$cat_upvotes, #p=num_vhigh_upvote/dim(reddit.train.vlow)[1], list=FALSE)
+#reddit.train.vlow <- reddit.train.vlow[inTrain.vlow,]
+
+inTrain.low <- createDataPartition(y = reddit.train.low$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.low)[1], list=FALSE)
+reddit.train.low <- reddit.train.low[inTrain.low,]
+
+inTrain.mod <- createDataPartition(y = reddit.train.mod$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.mod)[1], list=FALSE)
+reddit.train.mod <- reddit.train.mod[inTrain.mod,]
+
+inTrain.high <- createDataPartition(y = reddit.train.high$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.high)[1], list=FALSE)
+reddit.train.high <- reddit.train.high[inTrain.high,]
+
+```
+
+```{r}
+### Combine the 4 dataframes into the final training data
+reddit.train.final <- rbind(reddit.train.low, reddit.train.high, reddit.train.mod, reddit.train.vhigh)
+```
+
+```{r}
 reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
 ```
 
@@ -198,9 +250,8 @@ reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
 
 set.seed(47)
 fitControl <- trainControl(method="cv")
-
 knn.reddit <- train(cat_upvotes ~., data=reddit.train, method="knn", trControl = fitControl,
-                    tuneGrid= data.frame(k=c(1,3,5,7,9,11,13,15,17,19,21)))
+                    tuneGrid= data.frame(k=c(1,3,5,7,9,11)))
 ```
 
 ```{r}
@@ -222,6 +273,12 @@ rf.reddit <- train(cat_upvotes ~., data=reddit.train, method="rf",
                       importance = TRUE,na.action = na.exclude)
 
 rf.reddit$finalModel
+```
+
+RF on test data
+```{r}
+#mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
+confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = reddit.test$cat_upvotes)
 ```
 
 ```{r}

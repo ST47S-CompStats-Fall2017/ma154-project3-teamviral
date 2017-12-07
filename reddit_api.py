@@ -71,12 +71,11 @@ count = 0
 ## Searching posts from a given period of time in the SCIENCE subreddit
 for submission in reddit.subreddit('science').submissions(
         start=start_time, end=end_time, extra_query=None):
-	count = count + 1
-    # Print dictionary prettier
-    #pprint.pprint(vars(submission), width=1)
+
+    count = count + 1
 
     # Turns out that the images in the preview-images subdictionary are copies of the same image
-    # with different sizes. Thus, making preview-images a binary variable makes more sense
+    # with different sizes. Thus, making preview-images a binary variable makes more sense.
     try:
         preview = vars(submission)['preview']['images'][0]
         image_list.append('yes')
@@ -146,8 +145,8 @@ for submission in reddit.subreddit('science').submissions(
     created_utc = vars(submission)['created_utc']
     created_utc_list.append(created_utc)
     if count % 100 == 0:
-    	print ('Currently at epoch time of:')
-    	print (created_utc)
+        print ('Currently at epoch time of:')
+        print (created_utc)
     num_comments_list.append(vars(submission)['num_comments'])
     gilded_list.append(vars(submission)['gilded'])
 
