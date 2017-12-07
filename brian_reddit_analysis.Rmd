@@ -1,0 +1,305 @@
+---
+title: "Investigating the Popularity of Scientific Phenomena on Social Media Platforms"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, 
+                      fig.width=7, fig.height=3, fig.align = "center")
+```
+
+##Motivation
+
+look for random forests for unbalanced data 
+add 1 and take the log
+upsampling/downsampling
+
+20% small, 80% big
+
+try median method...?
+
+
+##Data input
+
+Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back about six months. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
+
+We store the resulting dataframe in "reddit_df.csv", and read it in below: 
+
+```{r}
+#Read the reddit data into a dataframe
+library(readr)
+require(ggplot2)
+reddit_df <- read_csv("reddit_df.csv")
+```
+
+After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We use the code below to translate that metric of time into year, date, and hour.
+
+```{r}
+#Wrangle the dates into a more readable format
+require(lubridate)
+require(dplyr)
+
+#Store all of the POSIX dates into a vector
+dates <- as.POSIXct(reddit_df$created_utc,origin = "1970-01-01",tz = "UTC")
+
+#Use lubridate to read y,m,d,h from that vector
+reddit_df <- reddit_df %>%  
+  mutate(post_year = year(dates),post_month = month(dates), post_day = day(dates), post_hour = hour(dates))
+```
+
+After obtaining that information, we create a categorical variable for "time" to categorize the time of day that the post was created into "Day", "Morning", and "Night". This step was necessary because otherwise, the classification algorithm would not classify "23" and "0" as the portion of the day (time wise), which would mess with our results. 
+
+```{r}
+#Create a new column for categorical time of day
+#Time ranges: PST 6pm-3am night      3am-10am morning    11am-6pm day
+mk_cat_time <- function(h)
+{
+  ifelse(h>18, "night", ifelse(h>10, "day", ifelse(h>2, "morning", "night")))
+}
+
+#Create a new column for categorical time of month
+#Time ranges: 1-10 early  11-20 mid    21-31 late
+mk_cat_day <- function(h)
+{
+  ifelse(h>20, "late", ifelse(h>10, "mid", "early"))
+}
+
+reddit_df <- reddit_df %>%
+  mutate(cat_post_hour = mk_cat_time(post_hour)) %>%
+  mutate(cat_post_day = mk_cat_day(post_day)) 
+```
+
+```{r}
+reddit_df %>% ggplot(aes(x=post_hour,y=title_len,color=cat_upvotes)) + geom_point()
+```
+
+
+Next, we clean up the data in order to remove posts that do not share media content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
+
+```{r}
+library(stringr)
+
+#Filter by removing the Ask Me Anything (AMA) threads and the subreddit discussion
+  #threads since these are not studies. 
+reddit_df <- reddit_df %>%
+  filter(!str_detect(subfield, " AMA")) %>%
+  filter(subfield != "Subreddit Discussion") %>%
+  filter(subfield != "Subreddit Feature")
+
+#Display the remaining subfields
+count(reddit_df,subfield)
+```
+
+```{r}
+#Here is the dataframe in its current state:
+head(reddit_df)
+```
+
+```{r}
+#Turn all categorical variables into factors
+reddit_df$author_flair_binary <- factor(reddit_df$author_flair_binary)
+reddit_df$image <- factor(reddit_df$image)
+reddit_df$journal_h_index <- factor(reddit_df$journal_h_index)
+reddit_df$subfield <- factor(reddit_df$subfield)
+#Uncomment year if analyzing more than 1 year, rf requires at least 2 levels per factor
+#reddit_df$post_year <- factor(reddit_df$post_year)
+reddit_df$post_month <- factor(reddit_df$post_month)
+reddit_df$cat_post_hour <- factor(reddit_df$cat_post_hour)
+reddit_df$cat_post_day <- factor(reddit_df$cat_post_day)
+
+```
+
+```{r}
+reddit_df %>%
+  ggplot(aes(x=post_hour,y=log10(upvotes))) + geom_point() +
+  ggtitle("Number of Upvotes by Post Time of Day") +
+  xlab("Hour Posted (UTC)") + ylab("log(Number of Upvotes)") 
+```
+
+```{r}
+high_h_index <- reddit_df %>% filter(journal_h_index=='high')
+```
+
+```{r}
+hist(high_h_index$upvotes)
+```
+
+```{r}
+reddit_df %>% group_by(image) %>% summarize(n())
+```
+
+```{r}
+unique(reddit_df$author_flair)
+```
+
+```{r}
+#To prepare for model building, we remove unnecessary columns:
+reddit_df <- reddit_df %>%
+  select(-X1,-title,-author,-author_created_date,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour)
+```
+
+```{r}
+bef_rm <- nrow(reddit_df)
+
+#Remove missing values
+reddit_df <- reddit_df[complete.cases(reddit_df),]
+aft_rm <- nrow(reddit_df)
+
+paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
+```
+
+```{r}
+#Remove variables that are likely coupled with the response (provide plots)
+reddit_df <- reddit_df %>%
+  select(-num_comments,-gilded,-link_karma,-comment_karma)
+```
+
+```{r}
+## Plot a histogram of upvotes. This suggests it might make sense to use ~25 (instead of 100) as a cutoff, since almost half the data is < 25.
+qplot(reddit_df$upvotes,
+      geom="histogram",
+      binwidth = 25,
+      fill=I("blue"), 
+      col=I("red"), 
+      alpha=I(.2),
+      xlim=c(0,1000))
+```
+
+```{r}
+###Only run this chunk if we want categorical upvotes. If we cahnge back to regression, 
+#We must change the response variables in the train functions in the chunks below
+
+#Create a new column for categorical upvotes
+#Ranges: 10000+ Very high     1000+ high     100+ moderate    0+ low
+mk_cat_upvotes <- function(upv)
+{
+  ifelse(upv>10000, "Very High", ifelse(upv>1000, "High", ifelse(upv>100, "Moderate", "Low")))
+}
+reddit_df <- reddit_df %>%
+  mutate(cat_upvotes = mk_cat_upvotes(upvotes)) %>%
+  select(-upvotes)
+
+reddit_df$cat_upvotes <- factor(reddit_df$cat_upvotes)
+```
+
+```{r}
+#Packages required for trees
+require(caret)
+require(rpart)
+
+#Set the seed for reproducibility
+set.seed(47)
+
+#Split the data into test and training
+inTrain <- createDataPartition(y = reddit_df$cat_upvotes, p=0.80, list=FALSE)
+reddit.train <- reddit_df[inTrain,]
+reddit.test <- reddit_df[-c(inTrain),]
+```
+
+```{r}
+# Look at distribution between categories
+sum(reddit.train['cat_upvotes'] == "Very High")
+sum(reddit.train['cat_upvotes'] == "High")
+sum(reddit.train['cat_upvotes'] == "Moderate")
+sum(reddit.train['cat_upvotes'] == "Low")
+#sum(reddit.train['cat_upvotes'] == "Very Low")
+
+# ~2% of the data has 0 upvotes. Maybe we could remove these?
+```
+
+```{r}
+### Sample data such that there is a 1:1:1:1 ratio in number of observations for each category.
+
+num_vhigh_upvote <- sum(reddit.train['cat_upvotes'] == "Very High")
+
+reddit.train.vhigh <- subset(reddit.train, reddit.train['cat_upvotes'] == "Very High")
+reddit.train.high <- subset(reddit.train, reddit.train['cat_upvotes'] == "High")
+reddit.train.mod <- subset(reddit.train, reddit.train['cat_upvotes'] == "Moderate")
+reddit.train.low <- subset(reddit.train, reddit.train['cat_upvotes'] == "Low")
+#reddit.train.vlow <- subset(reddit.train, reddit.train['cat_upvotes'] == "Very Low")
+
+
+#inTrain.vlow <- createDataPartition(y = reddit.train.vlow$cat_upvotes, #p=num_vhigh_upvote/dim(reddit.train.vlow)[1], list=FALSE)
+#reddit.train.vlow <- reddit.train.vlow[inTrain.vlow,]
+
+inTrain.low <- createDataPartition(y = reddit.train.low$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.low)[1], list=FALSE)
+reddit.train.low <- reddit.train.low[inTrain.low,]
+
+inTrain.mod <- createDataPartition(y = reddit.train.mod$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.mod)[1], list=FALSE)
+reddit.train.mod <- reddit.train.mod[inTrain.mod,]
+
+inTrain.high <- createDataPartition(y = reddit.train.high$cat_upvotes, p=num_vhigh_upvote/dim(reddit.train.high)[1], list=FALSE)
+reddit.train.high <- reddit.train.high[inTrain.high,]
+
+```
+
+```{r}
+### Combine the 4 dataframes into the final training data
+reddit.train.final <- rbind(reddit.train.low, reddit.train.high, reddit.train.mod, reddit.train.vhigh)
+```
+
+```{r}
+reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
+```
+
+
+```{r}
+# tried using a kNN model... don't think it works that well.
+
+set.seed(47)
+fitControl <- trainControl(method="cv")
+knn.reddit <- train(cat_upvotes ~., data=reddit.train, method="knn", trControl = fitControl,
+                    tuneGrid= data.frame(k=c(1,3,5,7,9,11)))
+```
+
+```{r}
+knn.reddit
+```
+
+```{r}
+confusionMatrix(data=predict(knn.reddit, newdata = reddit.test), 
+                reference = reddit.test$cat_upvotes)
+```
+
+
+
+```{r}
+#Build the random forest model
+rf.reddit <- train(cat_upvotes ~., data=reddit.train, method="rf",
+                      trControl = trainControl(method="oob"),
+                      ntree=500, tuneGrid = data.frame(mtry=7),
+                      importance = TRUE,na.action = na.exclude)
+
+rf.reddit$finalModel
+```
+
+RF on test data
+```{r}
+#mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
+confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = reddit.test$cat_upvotes)
+```
+
+```{r}
+varImp(rf.reddit$finalModel)
+```
+
+```{r}
+varImp(rf.reddit$finalModel)
+imp <- varImp(rf.reddit$finalModel)
+data.frame(rownames(imp),imp$Overall) %>%
+  arrange(desc(imp.Overall))
+```
+
+```{r}
+require(rpart.plot)
+#Build the random forest model
+tr.reddit <- train(cat_upvotes ~., data=reddit.train, method="rpart2",
+                      trControl = trainControl(method="none"),
+                      tuneGrid= data.frame(maxdepth=10))
+
+tr.reddit$finalModel
+rpart.plot(tr.reddit$finalModel)
+```
+
