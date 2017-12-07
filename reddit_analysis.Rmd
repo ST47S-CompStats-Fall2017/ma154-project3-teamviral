@@ -117,6 +117,10 @@ reddit_df$journal_h_index <- factor(reddit_df$journal_h_index)
 reddit_df$post_month <- factor(reddit_df$post_month)
 reddit_df$cat_post_hour <- factor(reddit_df$cat_post_hour)
 reddit_df$cat_post_day <- factor(reddit_df$cat_post_day)
+```
+
+```{r}
+#Sentiment Analysis on title
 
 ```
 
