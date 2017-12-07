@@ -31,6 +31,7 @@ reddit = praw.Reddit(client_id='rNGwNS4hRPJDfw', client_secret="WAe0pEENwYhWu6tE
 ## Retrieving data from the past 2 years:
 
 start_time = 1449400000
+#start_time = 1512614932-100000
 end_time = 1512614932
 
 #this is the list of dictionary names that we can use to pull data from vars(submission)
@@ -80,7 +81,7 @@ for submission in reddit.subreddit('science').submissions(
         preview = vars(submission)['preview']['images'][0]
         image_list.append('yes')
     except:
-        print ('No images for this post')
+        # print ('No images for this post')
         image_list.append('no')
 
     # Populate lists. I had to encode these to make the .to_csv work.
@@ -125,10 +126,19 @@ for submission in reddit.subreddit('science').submissions(
     try:
         link_karma_list.append(user.link_karma)
     except:
-        print ('Error in author info (user does not exist anymore).')
+        #print ('error in link karma')
         link_karma_list.append('NA')
+    try:
+        comment_karma_list.append(user.comment_karma)
+    except:
         comment_karma_list.append('NA')
+        #print ('error in comment karma')
+    try:
+        author_created_list.append(user.created_utc)
+    except:
         author_created_list.append('NA')
+        #print ('error in author created')
+
 
     author_flair = vars(submission)['author_flair_css_class']
     if not author_flair == None:
@@ -147,8 +157,17 @@ for submission in reddit.subreddit('science').submissions(
     if count % 100 == 0:
         print ('Currently at epoch time of:')
         print (created_utc)
+
+        print (len(author_list))
+        print (len(link_karma_list))
+        print (len(comment_karma_list))
+        print (len(author_created_list))
+        print (len(image_list))
+
     num_comments_list.append(vars(submission)['num_comments'])
     gilded_list.append(vars(submission)['gilded'])
+
+
 
 # Consolidate lists into one pandas data frame
 reddit_df = pd.DataFrame(
