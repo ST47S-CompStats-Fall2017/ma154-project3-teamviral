@@ -147,10 +147,29 @@ reddit_df %>% group_by(image) %>% summarize(n())
 unique(reddit_df$author_flair)
 ```
 
+Find longest word in every title, and mean word length. Add these two variables to the dataframe
+```{r}
+c_test <- str_split(reddit_df$title,boundary("word"))
+max_vec <- c()
+mean_vec <- c()
+
+for (i in 1:length(c_test)){
+  title_vec <- unlist(c_test[i])
+  max_word_len <- max(nchar(title_vec))
+  mean_word_len <- mean(nchar(title_vec))
+  max_vec <- c(max_vec, max_word_len)
+  mean_vec <- c(mean_vec, mean_word_len)
+}
+#c_test <- gsub("<", "", c_test, fixed=TRUE)
+reddit_df$max_title_length <- max_vec
+reddit_df$mean_title_length <- mean_vec
+```
+
+
 ```{r}
 #To prepare for model building, we remove unnecessary columns:
 reddit_df <- reddit_df %>%
-  select(-X1,-title,-author,-author_created_date,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour)
+  select(-X1,-title,-author,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour)
 ```
 
 ```{r}
