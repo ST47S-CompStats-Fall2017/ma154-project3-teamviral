@@ -15,7 +15,7 @@ library(stringr)
 library("splitstackshape")
 require(lubridate)
 require(dplyr)
-reddit_df <- read_csv("reddit_df.csv")
+reddit_df <- read_csv("reddit_df_final9.csv")
 ```
 
 ```{r}
@@ -80,7 +80,7 @@ reddit_df$title_sent <- titleSent_vec
 ```
 
 ```{r}
-write.csv(reddit_df, file = "reddit_df_sent.csv")
+write.csv(reddit_df, file = "reddit_df_final9_sent.csv")
 ```
 
 
