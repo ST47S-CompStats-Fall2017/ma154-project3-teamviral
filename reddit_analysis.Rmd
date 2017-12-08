@@ -24,7 +24,7 @@ For this work, we will use "Upvotes" as our metric of whether a scientific artic
 
 Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back atwo years. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
 
-When attempting to download the data, some explanatory variables were not in a readable format for .csv, but some characters broke that encoding. As a result, we aquired the data from November 2015-NOvember 2017 in 7 chunks, each of which are labeled reddit_df_final?.csv. We then ran them each through the sentiment_analysis.rmd file to perform sentiment analysis on the titles of each of them, and finally combine them together below:
+When attempting to download the data, some explanatory variables were not in a readable format for .csv, but some characters broke that encoding. As a result, we aquired the data from November 2015-NOvember 2017 in 9 chunks, each of which are labeled reddit_df_final?.csv. We then ran them each through the sentiment_analysis.rmd file to perform sentiment analysis on the titles of each of them, and finally combine them together below:
 
 ```{r}
 #Read the reddit data into a dataframe
@@ -37,8 +37,10 @@ reddit_df_final4 <- read_csv("reddit_df_final4_sent.csv")
 reddit_df_final5 <- read_csv("reddit_df_final5_sent.csv")
 reddit_df_final6 <- read_csv("reddit_df_final6_sent.csv")
 reddit_df_final7 <- read_csv("reddit_df_final7_sent.csv")
+reddit_df_final8 <- read_csv("reddit_df_final8_sent.csv")
+reddit_df_final9 <- read_csv("reddit_df_final9_sent.csv")
 
-reddit_df <- rbind(reddit_df_final1,reddit_df_final2,reddit_df_final3,reddit_df_final4,reddit_df_final5,reddit_df_final6,reddit_df_final7)
+reddit_df <- rbind(reddit_df_final1,reddit_df_final2,reddit_df_final3,reddit_df_final4,reddit_df_final5,reddit_df_final6,reddit_df_final7,reddit_df_final8,reddit_df_final9)
 
 #Store a copy of the dataframe for later use
 reddit_df_read <- reddit_df
@@ -99,10 +101,9 @@ library(stringr)
   #threads since these are not studies. 
 reddit_df <- reddit_df %>%
   filter(!str_detect(subfield, " AMA")) %>%
-  filter(subfield != "Subreddit Discussion") %>%
-  filter(subfield != "Subreddit Feature") %>%
-  filter(subfield != "Deaths + injuries") %>%
-  filter(subfield != "Mathematics")
+  filter(subfield != "Mathematics") %>%
+  group_by(subfield) %>%
+  filter(n() > 50)
 
 #Display the remaining subfields
 count(reddit_df,subfield)
@@ -124,6 +125,7 @@ reddit_df <- reddit_df %>%
 #Turn the new column into a factor for model use
 reddit_df$cat_subfield <- factor(reddit_df$cat_subfield)
 ```
+
 
 Here we make a plot of the distribution of articles into these four categories, saved as subfield_chart.png
 
@@ -195,17 +197,17 @@ Here we plot a histogram of the number of upvotes, showing that the vast majorit
 
 ```{r}
 require(ggplot2)
-hist_upvotes <- qplot(reddit_df$upvotes,
+hist_upvotes <- qplot(log10(reddit_df$upvotes+1),
       geom="histogram",
-      binwidth = 25,
+      binwidth = 0.05,
       main = 'Histogram of Upvotes (Response Variable)',
-      xlab = "Number of Upvotes",
+      xlab = "log(Number of Upvotes)",
       ylab = "Counts",
       fill=I("blue"),
       col=I("red"), 
       alpha=I(.2),
-      xlim=c(0,2000)) +
-  geom_vline(xintercept=1000,show_guide=TRUE,linetype="dashed")
+      xlim=c(0,5)) +
+  geom_vline(xintercept=3,show_guide=TRUE,linetype="dashed")
 
 hist_upvotes
 #ggsave(hist_upvotes, filename='./hist_upvotes.png', width=8, height=5)
