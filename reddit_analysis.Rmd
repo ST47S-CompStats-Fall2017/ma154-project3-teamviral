@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE,
 
 ## Data Wrangling
 
-Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back about six months. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
+Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back atwo years. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
 
 We store the resulting dataframe in "reddit_df.csv", and read it in below: 
 
@@ -26,6 +26,7 @@ We store the resulting dataframe in "reddit_df.csv", and read it in below:
 library(readr)
 require(ggplot2)
 reddit_df <- read_csv("reddit_df_sent.csv")
+#Store a copy of the dataframe for later use
 reddit_df_read <- reddit_df
 ```
 
@@ -34,19 +35,18 @@ After retrieving the data, we take multiple steps to wrangle it into a format th
 ##Modifications to Date Column
 
 ```{r}
-#Wrangle the dates into a more readable format
 require(lubridate)
 require(dplyr)
 
 #Store all of the POSIX dates into a vector
 dates <- as.POSIXct(reddit_df$created_utc,origin = "1970-01-01",tz = "UTC")
 
-#Use lubridate to read y,m,d,h from that vector
+#Use lubridate to read y,m,d,h from that vector. Create new columns for these
 reddit_df <- reddit_df %>%  
   mutate(post_year = year(dates),post_month = month(dates), post_day = day(dates), post_hour = hour(dates))
 ```
 
-After obtaining that information, we create a categorical variable for "time" to categorize the time of day that the post was created into "Day", "Morning", and "Night". This step was necessary because otherwise, the classification algorithm would not classify "23" and "0" as the portion of the day (time wise), which would mess with our results. 
+After obtaining that information, we create a categorical variable for "time" to categorize the time of day that the post was created into "Day", "Morning", and "Night". This step was necessary because otherwise, the classification algorithm would not classify "23" and "0" as the same portion of the day (time wise), which would change with our results. 
 
 ```{r}
 #Create a new column for categorical time of day
@@ -57,22 +57,27 @@ mk_cat_time <- function(h)
 }
 
 #Create a new column for categorical time of month
-#Time ranges: 1-10 early  11-20 mid    21-31 late
-mk_cat_day <- function(h)
+#Time ranges: 1-10 early    11-20 mid    21-31 late
+mk_cat_day <- function(d)
 {
-  ifelse(h>20, "late", ifelse(h>10, "mid", "early"))
+  ifelse(d>20, "late", ifelse(d>10, "mid", "early"))
+}
+
+#Create a new column for categorical time of year
+#Time ranges: Dec-Feb: Winter   Mar-May: Spring    Jun-Aug: Summer    Sep-Nov: Fall
+mk_cat_month <- function(m)
+{
+  ifelse(m>11, "Winter", ifelse(m>8, "Fall", ifelse(m>5, "Summer", ifelse(m>2, "Spring", "Winter"))))
 }
 
 reddit_df <- reddit_df %>%
   mutate(cat_post_hour = mk_cat_time(post_hour)) %>%
-  mutate(cat_post_day = mk_cat_day(post_day)) 
+  mutate(cat_post_day = mk_cat_day(post_day)) %>%
+  mutate(cat_post_month = mk_cat_month(post_month)) 
 ```
 
-```{r}
-#reddit_df %>% ggplot(aes(x=post_hour,y=title_len,color=cat_upvotes)) + geom_point()
-```
 
-Next, we clean up the data in order to remove posts that do not share media content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
+Next, we clean up the data in order to remove posts that do not share scientific content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
 
 ```{r}
 library(stringr)
@@ -90,21 +95,30 @@ reddit_df <- reddit_df %>%
 count(reddit_df,subfield)
 ```
 
+Now, we group the remaining subfields into four major categories so that our model can more easily divide among them. We made these selections by our impressions of the categories that these fields fall into, so this step is certainly subjective. 
 ```{r}
+#Make a function that sorts fields into "Life Science," "Psychology," "Physical Science," "Environment"
 mk_cat_subfield <- function(field)
 {
-  ifelse(field == "Biology" | field =="Health" | field =="Cancer" | field =="Medicine" | field =="Animal Science" | field =="Paleontology" | field =="Epidemiology", "Life Science", ifelse(field =="Psychology" | field =="Neuroscience" | field =="Social Science" | field =="Anthropology", "Psychology", ifelse(field =="Chemistry" | field =="Nanoscience", "Chemistry", ifelse(field =="Geology" | field =="Astronomy" | field =="Physics" | field =="Engineering" | field =="Computer Science", "Phys/Astro", "Environment"))))
+  ifelse(field == "Biology" | field =="Health" | field =="Cancer" | field =="Medicine" | field =="Animal Science" | field =="Paleontology" | field =="Epidemiology", "Life Science", ifelse(field =="Psychology" | field =="Neuroscience" | field =="Social Science" | field =="Anthropology", "Psychology", ifelse(field =="Geology" | field =="Astronomy" | field =="Physics" | field =="Chemistry" | field =="Nanoscience" | field =="Engineering" | field =="Computer Science", "Physical Science", "Environment")))
 }
+#Apply the function and remove the old column
 reddit_df <- reddit_df %>%
   mutate(cat_subfield = mk_cat_subfield(subfield)) %>%
   select(-subfield)
 
+#Turn the new column into a factor for model use
 reddit_df$cat_subfield <- factor(reddit_df$cat_subfield)
 ```
 
+Here we make a plot of the distribution of articles into these four categories, saved as subfield_chart.png
 ```{r}
-#Here is the dataframe in its current state:
-head(reddit_df)
+subfield_freq = table(reddit_df$cat_subfield)
+type_freq_perc = paste(round((subfield_freq/(237+1100+360+497))*100,0), "%",sep="")
+type_freq_lab = paste(c("Environment","Life science", "Physical science", "Psychology"), type_freq_perc, sep = " ")
+png("subfield_chart.png", width=8, height=6, units="in", res=500)
+pie(subfield_freq,labels=type_freq_lab, init.angle = 51, edges = 10000, col = c("paleturquoise3","darkseagreen4","slateblue4","plum2"), main="Distribution of Subfields")
+dev.off()
 ```
 
 ```{r}
@@ -112,43 +126,19 @@ head(reddit_df)
 reddit_df$author_flair_binary <- factor(reddit_df$author_flair_binary)
 reddit_df$image <- factor(reddit_df$image)
 reddit_df$journal_h_index <- factor(reddit_df$journal_h_index)
-#reddit_df$subfield <- factor(reddit_df$subfield)
-#Uncomment year if analyzing more than 1 year, rf requires at least 2 levels per factor
-#reddit_df$post_year <- factor(reddit_df$post_year)
-reddit_df$post_month <- factor(reddit_df$post_month)
+reddit_df$post_year <- factor(reddit_df$post_year)
+reddit_df$cat_post_month <- factor(reddit_df$cat_post_month)
 reddit_df$cat_post_hour <- factor(reddit_df$cat_post_hour)
 reddit_df$cat_post_day <- factor(reddit_df$cat_post_day)
 ```
 
 ```{r}
-reddit_df %>%
-  ggplot(aes(x=post_hour,y=log10(upvotes))) + geom_point() +
-  ggtitle("Number of Upvotes by Post Time of Day") +
-  xlab("Hour Posted (UTC)") + ylab("log(Number of Upvotes)") 
-```
-
-```{r}
-high_h_index <- reddit_df %>% filter(journal_h_index=='high')
-```
-
-```{r}
-hist(high_h_index$upvotes)
-```
-
-```{r}
-reddit_df %>% group_by(image) %>% summarize(n())
-```
-
-```{r}
-unique(reddit_df$author_flair)
-```
-
-```{r}
-#To prepare for model building, we remove unnecessary columns:
+#To prepare for model building, we remove unnecessary columns and ones correlated with response
 reddit_df <- reddit_df %>%
-  select(-X1,-author,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour,-num_comments,-gilded,-link_karma,-comment_karma,-title,-X1_1)
+  select(-X1,-author,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour,-post_month,-num_comments,-gilded,-link_karma,-comment_karma,-title,-X1_1,-author_created_date)
 ```
 
+Now we remove any rows that have missing values. We also print the proportion of rows removed below to ensure that we are not removing a large fraction of the data. The vast majority of these removed rows are due to authors that have since deleted their accounts, so all of their data is missing. 
 ```{r}
 bef_rm <- nrow(reddit_df)
 
@@ -159,53 +149,57 @@ aft_rm <- nrow(reddit_df)
 paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
 ```
 
-```{r}
-## Plot a histogram of upvotes. This suggests it might make sense to use ~25 (instead of 100) as a cutoff, since almost half the data is < 25.
-qplot(reddit_df$upvotes,
-      geom="histogram",
-      binwidth = 25,
-      fill=I("blue"), 
-      col=I("red"), 
-      alpha=I(.2),
-      xlim=c(0,1000))
-```
+Here we plot a histogram of the number of upvotes, showing that the vast majority of our data has "low" (<1000) upvotes:
 
+
+
+
+
+
+Now we turn the continuous upvote response variable into a binary response. 
 ```{r}
 #Create a new column for categorical upvotes
-#Ranges: 1000+ high   0+ low
+#Ranges: 1000+ high      0+ low
 mk_cat_upvotes <- function(upv)
 {
   ifelse(upv>1000, "High", "Low")
 }
+#Apply the function and remove the old column
 reddit_df <- reddit_df %>%
   mutate(cat_upvotes = mk_cat_upvotes(upvotes)) %>%
   select(-upvotes)
 
+#Turn the column into a factor
 reddit_df$cat_upvotes <- factor(reddit_df$cat_upvotes)
 ```
 
+##Model Building
+
+Finally, we are ready to build our Random Forest model. We partition the data into test and training, setting aside the test data so that we can appropriately assess our model's accuracy. 
 ```{r}
-#Packages required for trees
+#Packages required for model building
 require(caret)
 require(rpart)
 
 #Set the seed for reproducibility
 set.seed(47)
 
-#Split the data into test and training
+#Split the data into test and training, with 80% going to training
 inTrain <- createDataPartition(y = reddit_df$cat_upvotes, p=0.80, list=FALSE)
 reddit.train <- reddit_df[inTrain,]
 reddit.test <- reddit_df[-c(inTrain),]
 ```
 
+By looking at the number of observations in tach category below, we see that predicting everything as "low" gives a fairly high accuracy! To avoid this, we will sample from our training set to have equal number of "high" and "low" responses. 
 ```{r}
-# Look at distribution between categories
+#Print the number of observations in each category
 sum(reddit.train['cat_upvotes'] == "High")
 sum(reddit.train['cat_upvotes'] == "Low")
 ```
 
+We sample from the "low" training data so that it now has the same number of observations as the high.
 ```{r}
-### Sample data such that there is a 1:1 ratio in number of observations for each category.
+### Sample data such that there is a equal number of observations for each category.
 
 #Count the number of high upvotes
 num_high_upvote <- sum(reddit.train['cat_upvotes'] == "High")
@@ -224,11 +218,11 @@ reddit.train.final <- rbind(reddit.train.low, reddit.train.high)
 ```
 
 ```{r}
+#Check that the numbers are equal.
 reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
 ```
 
-## Making Models
-
+Now we grow the random forest, using the out of bag error rate to tune the mtry parameter (number of variables at each split). 
 ```{r}
 #Build the random forest model
 rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
@@ -239,17 +233,29 @@ rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
 rf.reddit$finalModel
 ```
 
-RF on test data
+Fianlly, using the best value of mtry, we apply the model to our test data to assess accuracy. 
 ```{r}
 #mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
 confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = reddit.test$cat_upvotes)
 ```
 
+Now, we print the variable importance for the model. This gives us an indication of which explanatory variables most directly impact the response. 
 ```{r}
 varImp(rf.reddit,scale=FALSE)
 ```
 
+Print the posts with the most positive title sentiments
 ```{r}
 reddit_df_read %>%
-  arrange(desc(title_sent))
+  arrange(desc(title_sent)) %>%
+  select(title_sent,title) %>%
+  head()
+```
+
+Print the posts with the most negative title sentiments
+```{r}
+reddit_df_read %>%
+  arrange(title_sent) %>%
+  select(title_sent,title) %>%
+  head()
 ```
