@@ -12,8 +12,13 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE,
 
 ##Motivation
 
+Large numbers of scientific studies are published each day, many of which address pertinent gaps in human knowledge. Some results, however, become much more visible to the general populace than others. Why do some scientific results go viral, while others remain obscure? We wish to investigate what factors might influence the popularity of links about science on a social media platform, and the insights that may lend to scientific communication.
 
+We choose Reddit as our platform for analysis because it is the 8th most visited site around the world, with over 500 million users total. This particular platform is convenient because it has a specific forum, the "Science" subreddit, that is dedicated to sharing and discussing scientific results. This particular subreddit can also reach a broad viewership because all Reddit users are subscribed to it by default (at the time this was written, the "Science" subreddit has around 18 million subscribers). 
 
+On Reddit, users can post content and "Upvote" the posts that they like. Within a subreddit, posts with higher upvotes will end up on the first page of the subreddit (e.g. they are the first posts that users will see when they visit the subreddit). When a post in "Science" gathers enough votes, it will end up on the "Reddit" frontpage, where it will get an even large viewership (all Reddit users will see the post when they open the website?). 
+
+For this work, we will use "Upvotes" as our metric of whether a scientific article is popular: e.g., our response variable. We plan to use methods of statistical inference to understand which variables may contribute the most to whether a scientific article garners a large number of upvotes. 
 
 ## Data Wrangling
 
@@ -76,7 +81,6 @@ reddit_df <- reddit_df %>%
   mutate(cat_post_month = mk_cat_month(post_month)) 
 ```
 
-
 Next, we clean up the data in order to remove posts that do not share scientific content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
 
 ```{r}
@@ -96,6 +100,7 @@ count(reddit_df,subfield)
 ```
 
 Now, we group the remaining subfields into four major categories so that our model can more easily divide among them. We made these selections by our impressions of the categories that these fields fall into, so this step is certainly subjective. 
+
 ```{r}
 #Make a function that sorts fields into "Life Science," "Psychology," "Physical Science," "Environment"
 mk_cat_subfield <- function(field)
@@ -112,6 +117,7 @@ reddit_df$cat_subfield <- factor(reddit_df$cat_subfield)
 ```
 
 Here we make a plot of the distribution of articles into these four categories, saved as subfield_chart.png
+
 ```{r}
 subfield_freq = table(reddit_df$cat_subfield)
 type_freq_perc = paste(round((subfield_freq/(237+1100+360+497))*100,0), "%",sep="")
@@ -139,6 +145,7 @@ reddit_df <- reddit_df %>%
 ```
 
 Now we remove any rows that have missing values. We also print the proportion of rows removed below to ensure that we are not removing a large fraction of the data. The vast majority of these removed rows are due to authors that have since deleted their accounts, so all of their data is missing. 
+
 ```{r}
 bef_rm <- nrow(reddit_df)
 
@@ -156,7 +163,8 @@ Here we plot a histogram of the number of upvotes, showing that the vast majorit
 
 
 
-Now we turn the continuous upvote response variable into a binary response. 
+Now we turn the continuous upvote response variable into a binary response. We choose 1000 upvotes as our cut-off, because that seems to be the approximate threshold where a post will end up on the front page of the subreddit, or the front page of the entire website.
+
 ```{r}
 #Create a new column for categorical upvotes
 #Ranges: 1000+ high      0+ low
@@ -176,6 +184,7 @@ reddit_df$cat_upvotes <- factor(reddit_df$cat_upvotes)
 ##Model Building
 
 Finally, we are ready to build our Random Forest model. We partition the data into test and training, setting aside the test data so that we can appropriately assess our model's accuracy. 
+
 ```{r}
 #Packages required for model building
 require(caret)
@@ -191,6 +200,7 @@ reddit.test <- reddit_df[-c(inTrain),]
 ```
 
 By looking at the number of observations in tach category below, we see that predicting everything as "low" gives a fairly high accuracy! To avoid this, we will sample from our training set to have equal number of "high" and "low" responses. 
+
 ```{r}
 #Print the number of observations in each category
 sum(reddit.train['cat_upvotes'] == "High")
@@ -198,6 +208,7 @@ sum(reddit.train['cat_upvotes'] == "Low")
 ```
 
 We sample from the "low" training data so that it now has the same number of observations as the high.
+
 ```{r}
 ### Sample data such that there is a equal number of observations for each category.
 
@@ -223,8 +234,11 @@ reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
 ```
 
 Now we grow the random forest, using the out of bag error rate to tune the mtry parameter (number of variables at each split). 
+
 ```{r}
 #Build the random forest model
+set.seed(4747)
+
 rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
                       trControl = trainControl(method="oob"),
                       ntree=1000, tuneGrid = data.frame(mtry=c(3,5,7,9,11)),
@@ -233,7 +247,8 @@ rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
 rf.reddit$finalModel
 ```
 
-Fianlly, using the best value of mtry, we apply the model to our test data to assess accuracy. 
+The model with the best accuracy corresponds to mtry = . Using this best model, we predict our test data to assess our model's accuracy. 
+
 ```{r}
 #mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
 confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = reddit.test$cat_upvotes)
