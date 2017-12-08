@@ -24,13 +24,22 @@ For this work, we will use "Upvotes" as our metric of whether a scientific artic
 
 Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back atwo years. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
 
-We store the resulting dataframe in "reddit_df.csv", and read it in below: 
+When attempting to download the data, some explanatory variables were not in a readable format for .csv, but some characters broke that encoding. As a result, we aquired the data from November 2015-NOvember 2017 in 7 chunks, each of which are labeled reddit_df_final?.csv. We then ran them each through the sentiment_analysis.rmd file to perform sentiment analysis on the titles of each of them, and finally combine them together below:
 
 ```{r}
 #Read the reddit data into a dataframe
 library(readr)
 require(ggplot2)
-reddit_df <- read_csv("reddit_df_sent.csv")
+reddit_df_final1 <- read_csv("reddit_df_final1_sent.csv")
+reddit_df_final2 <- read_csv("reddit_df_final2_sent.csv")
+reddit_df_final3 <- read_csv("reddit_df_final3_sent.csv")
+reddit_df_final4 <- read_csv("reddit_df_final4_sent.csv")
+reddit_df_final5 <- read_csv("reddit_df_final5_sent.csv")
+reddit_df_final6 <- read_csv("reddit_df_final6_sent.csv")
+reddit_df_final7 <- read_csv("reddit_df_final7_sent.csv")
+
+reddit_df <- rbind(reddit_df_final1,reddit_df_final2,reddit_df_final3,reddit_df_final4,reddit_df_final5,reddit_df_final6,reddit_df_final7)
+
 #Store a copy of the dataframe for later use
 reddit_df_read <- reddit_df
 ```
