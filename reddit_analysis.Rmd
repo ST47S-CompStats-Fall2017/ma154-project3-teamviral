@@ -138,6 +138,32 @@ reddit_df$cat_post_hour <- factor(reddit_df$cat_post_hour)
 reddit_df$cat_post_day <- factor(reddit_df$cat_post_day)
 ```
 
+Author created date vs upvotes -- bias from single high-karma user 'mvea'. Thus we removed this observations posted by this user from the data.
+
+```{r}
+acd_plot <- ggplot(data=reddit_df, aes(x=author_created_date, y=upvotes))+
+  geom_point(size=0.5) +
+  xlab("Author Creation Date")+
+  ylab("Upvotes")+
+  ggtitle("Upvotes v.s. Author Creation Date")
+#ggsave(acd_plot, filename='./acd_plot.png', width=8, height=5)
+
+acd_plot
+```
+
+Number of comments vs upvotes -- expected strong positive correlation. Coupled with response.
+
+```{r}
+nc_plot <- ggplot(data=reddit_df, aes(x=num_comments, y=upvotes))+
+  geom_point(size=0.5) +
+  xlab("Number of Comments")+
+  ylab("Upvotes")+
+  ggtitle("Upvotes v.s. Number of Comments")
+#ggsave(nc_plot, filename='./nc_plot.png', width=8, height=5)
+
+nc_plot
+```
+
 ```{r}
 #To prepare for model building, we remove unnecessary columns and ones correlated with response
 reddit_df <- reddit_df %>%
@@ -158,9 +184,49 @@ paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
 
 Here we plot a histogram of the number of upvotes, showing that the vast majority of our data has "low" (<1000) upvotes:
 
+```{r}
+require(ggplot2)
+hist_upvotes <- qplot(reddit_df$upvotes,
+      geom="histogram",
+      binwidth = 25,
+      main = 'Histogram of Upvotes (Response Variable)',
+      xlab = "Number of Upvotes",
+      ylab = "Counts",
+      fill=I("blue"),
+      col=I("red"), 
+      alpha=I(.2),
+      xlim=c(0,2000)) +
+  geom_vline(xintercept=1000,show_guide=TRUE,linetype="dashed")
 
+hist_upvotes
+#ggsave(hist_upvotes, filename='./hist_upvotes.png', width=8, height=5)
+```
 
+Here, we plot the mean title word length vs. number of upvotes: 
 
+```{r}
+mtl_plot <- ggplot(data=reddit_df, aes(x=mean_title_length, y=upvotes))+
+  geom_point(size=0.5) +
+  xlab("Average Word Length")+
+  ylab("Upvotes")+
+  ggtitle("Upvotes v.s. Average Word Length (in Title)")
+
+mtl_plot
+#ggsave(mtl_plot, filename='./mtl_plot.png', width=8, height=5)
+```
+
+Here, we plot the total title length vs. number of upvotes: 
+
+```{r}
+tl_plot <- ggplot(data=reddit_df, aes(x=title_len, y=upvotes))+
+  geom_point(size=0.5) +
+  xlab("Total Title Length")+
+  ylab("Upvotes")+
+  ggtitle("Upvotes v.s. Total Title Length")
+ggsave(tl_plot, filename='./tl_plot.png', width=8, height=5)
+
+tl_plot
+```
 
 
 Now we turn the continuous upvote response variable into a binary response. We choose 1000 upvotes as our cut-off, because that seems to be the approximate threshold where a post will end up on the front page of the subreddit, or the front page of the entire website.
@@ -180,6 +246,7 @@ reddit_df <- reddit_df %>%
 #Turn the column into a factor
 reddit_df$cat_upvotes <- factor(reddit_df$cat_upvotes)
 ```
+
 
 ##Model Building
 
