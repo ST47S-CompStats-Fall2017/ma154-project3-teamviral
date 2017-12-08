@@ -31,17 +31,16 @@ When attempting to download the data, some explanatory variables were not in a r
 library(readr)
 require(ggplot2)
 reddit_df_final1 <- read_csv("reddit_df_final1_sent.csv")
-#reddit_df_final2 <- read_csv("reddit_df_final2_sent.csv")
+reddit_df_final2 <- read_csv("reddit_df_final2_sent.csv")
 reddit_df_final3 <- read_csv("reddit_df_final3_sent.csv")
-#reddit_df_final4 <- read_csv("reddit_df_final4_sent.csv")
+reddit_df_final4 <- read_csv("reddit_df_final4_sent.csv")
 reddit_df_final5 <- read_csv("reddit_df_final5_sent.csv")
 reddit_df_final6 <- read_csv("reddit_df_final6_sent.csv")
 reddit_df_final7 <- read_csv("reddit_df_final7_sent.csv")
 reddit_df_final8 <- read_csv("reddit_df_final8_sent.csv")
 reddit_df_final9 <- read_csv("reddit_df_final9_sent.csv")
 
-reddit_df <- rbind(reddit_df_final1,reddit_df_final3,reddit_df_final5,reddit_df_final6,reddit_df_final7,reddit_df_final8,reddit_df_final9)
-#reddit_df_final2,,reddit_df_final4
+reddit_df <- rbind(reddit_df_final1,reddit_df_final2,reddit_df_final3,reddit_df_final4,reddit_df_final5,reddit_df_final6,reddit_df_final7,reddit_df_final8,reddit_df_final9)
 
 #Store a copy of the dataframe for later use
 reddit_df_read <- reddit_df
