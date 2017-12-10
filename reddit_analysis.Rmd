@@ -6,30 +6,47 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, 
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=FALSE, 
                       fig.width=7, fig.height=3, fig.align = "center")
 ```
 
-##Motivation
+## Section 1: Motivation
 
 Large numbers of scientific studies are published each day, many of which address pertinent gaps in human knowledge. Some results, however, become much more visible to the general populace than others. Why do some scientific results go viral, while others remain obscure? We wish to investigate what factors might influence the popularity of links about science on a social media platform, and the insights that may lend to scientific communication.
 
 We choose Reddit as our platform for analysis because it is the 8th most visited site around the world, with over 500 million users total. This particular platform is convenient because it has a specific forum, the "Science" subreddit, that is dedicated to sharing and discussing scientific results. This particular subreddit can also reach a broad viewership because all Reddit users are subscribed to it by default (at the time this was written, the "Science" subreddit has around 18 million subscribers). 
 
-On Reddit, users can post content and "Upvote" the posts that they like. Within a subreddit, posts with higher upvotes will end up on the first page of the subreddit (e.g. they are the first posts that users will see when they visit the subreddit). When a post in "Science" gathers enough votes, it will end up on the "Reddit" frontpage, where it will get an even large viewership (all Reddit users will see the post when they open the website?). 
+On Reddit, users can post content and "Upvote" the posts that they like. Within a subreddit, posts with higher upvotes will end up on the first page of the subreddit (e.g. they are the first posts that users will see when they visit the subreddit). When a post in "Science" gathers enough votes, it will end up on the "Reddit" frontpage, where it will get an even large viewership (i.e.: all Reddit users will see the post when they open the website). 
 
-For this work, we will use "Upvotes" as our metric of whether a scientific article is popular: e.g., our response variable. We plan to use methods of statistical inference to understand which variables may contribute the most to whether a scientific article garners a large number of upvotes. 
+For this work, we will use "Upvotes" as our metric of whether a scientific article is popular: e.g., our response variable. We plan to build a random forest model to understand which variables may contribute the most to whether a scientific article garners a large number of votes.
 
-## Data Wrangling
+The structure of this document is as follows: In section 2, we describe how we acquire data from Reddit, and how we use that data to acquire more information about the posts. In section 3, we describe the process of manipulating various columns to make our model more robust. In section 4, we describe the process of model building and interpretation. In Section 5, we summarize our results and interpret them in the context of our broader question.  
 
-Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back atwo years. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. We also define a variable called the "journal $h$ index", which tracks posts containing scientific articles that are deemed "high-impact."
+## Section 2: Data Acquisition and Modification
 
-When attempting to download the data, some explanatory variables were not in a readable format for .csv, but some characters broke that encoding. As a result, we aquired the data from November 2015-NOvember 2017 in 9 chunks, each of which are labeled reddit_df_final?.csv. We then ran them each through the sentiment_analysis.rmd file to perform sentiment analysis on the titles of each of them, and finally combine them together below:
+Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back two years. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. 
+
+From the fields that we queried, we attempted to extract more information about each obsevation. As we acquired data from the API, we create an explanatory variable called the "journal $h$ index", which tracks posts linking to "high-impact" scientific articles. For this part, we reference the $h$ index rankings Scimago Country and Rank (scimagojr.com), and define posts with a high $h$ index as those that link to journals which are in the top 10 of the $h$ index rankings. When attempting to download the data, some explanatory variables were not in a readable format for .csv, but some characters broke that encoding. As a result, we acquired the data from November 2015-November 2017 in 9 chunks. The results from the API query are saved in the repository as `reddit_df_final[number].csv`. 
+
+After we have this dataset, we attempt to perform sentiment analysis on the dataset. The sentiment analysis code is in the `sentiment_analysis.rmd` file, which we use to process the files from our query.
+
+This is how the code works: we obtain the corpus of words from SentiWordNet,  which assigns nearly every word in the English language a positive or negative index with a value between 0 and 1. From each of our post titles, we remove "stopwords" like "about", "the", etc. (which generally don't have positive or negative connotations) Taking words with an overall positive meaning to have a positive value, and treating negatively-connotating words analogously, we sum up the total indices of the remaining words in the title. We then divide that sum by the number of words to acquire our desired variable, which can be thought of as the title's sentiment "density." 
+
+We save the results of this analysis in the repository as `reddit_df_final[number]_sent.csv`. In the code below, we read in the fields: 
+
+```{r}
+#Reading in the packages that we used to wrangle our data
+
+require(lubridate)
+require(dplyr)
+library(readr)
+require(ggplot2)
+library(stringr)
+```
+
 
 ```{r}
 #Read the reddit data into a dataframe
-library(readr)
-require(ggplot2)
 reddit_df_final1 <- read_csv("reddit_df_final1_sent.csv")
 reddit_df_final2 <- read_csv("reddit_df_final2_sent.csv")
 reddit_df_final3 <- read_csv("reddit_df_final3_sent.csv")
@@ -46,14 +63,33 @@ reddit_df <- rbind(reddit_df_final1,reddit_df_final2,reddit_df_final3,reddit_df_
 reddit_df_read <- reddit_df
 ```
 
-After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We use the code below to translate that metric of time into year, date, and hour.
-
-##Modifications to Date Column
+We wanted to get a sense for whether sentiment analysis, so to do this, we looked at the six titles with the most "positive" sentiment and the most "negative" sentiments; the code below prints out these values: 
 
 ```{r}
-require(lubridate)
-require(dplyr)
+reddit_df_read %>%
+  arrange(desc(title_sent)) %>%
+  select(title_sent,title) %>%
+  head()
+```
 
+The most positive two titles are: "Nonnutritive sweeteners and cardiometabolic health" and "Babies know when they don't know something". Some of these are reasonable? But others are: "Happiness doesn't bring good health, study finds," and "Facebook posts inspired by envy, UBC study finds." For some of these, we can begin to back out how the issues might have occurred. e.g. "Happiness doesn't bring good health" has positive words like "happiness," "good," and "health", which can make the average sentiment of the title positive even if the presence of the single negation "doesn't" alters the overall meaning of the sentiment. 
+
+Print the posts with the most negative title sentiments
+
+```{r}
+reddit_df_read %>%
+  arrange(title_sent) %>%
+  select(title_sent,title) %>%
+  head()
+```
+
+Sentiment analysis was a good exercise, but it is unclear whether it would be a meaningful predictor of our response variable.
+
+## Section 3: Variable Modification
+
+After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We use the code below to translate that metric of time into year, date, and hour.
+
+```{r}
 #Store all of the POSIX dates into a vector
 dates <- as.POSIXct(reddit_df$created_utc,origin = "1970-01-01",tz = "UTC")
 
@@ -95,8 +131,6 @@ reddit_df <- reddit_df %>%
 Next, we clean up the data in order to remove posts that do not share scientific content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
 
 ```{r}
-library(stringr)
-
 #Filter by removing the Ask Me Anything (AMA) threads and the subreddit discussion
   #threads since these are not studies. 
 reddit_df <- reddit_df %>%
@@ -126,16 +160,20 @@ reddit_df <- reddit_df %>%
 reddit_df$cat_subfield <- factor(reddit_df$cat_subfield)
 ```
 
-
 Here we make a plot of the distribution of articles into these four categories, saved as subfield_chart.png
 
 ```{r}
+subfield_freq
+```
+
+```{r}
 subfield_freq = table(reddit_df$cat_subfield)
-type_freq_perc = paste(round((subfield_freq/(237+1100+360+497))*100,0), "%",sep="")
+type_freq_perc = paste(round((subfield_freq/length(reddit_df$cat_subfield)),2)*100,
+                       "%",sep="")
 type_freq_lab = paste(c("Environment","Life science", "Physical science", "Psychology"), type_freq_perc, sep = " ")
-png("subfield_chart.png", width=8, height=6, units="in", res=500)
+#png("subfield_chart.png", width=8, height=6, units="in", res=500)
 pie(subfield_freq,labels=type_freq_lab, init.angle = 51, edges = 10000, col = c("paleturquoise3","darkseagreen4","slateblue4","plum2"), main="Distribution of Subfields")
-dev.off()
+#dev.off()
 ```
 
 ```{r}
@@ -196,7 +234,6 @@ paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
 Here we plot a histogram of the number of upvotes, showing that the vast majority of our data has "low" (<1000) upvotes:
 
 ```{r}
-require(ggplot2)
 hist_upvotes <- qplot(log10(reddit_df$upvotes+1),
       geom="histogram",
       binwidth = 0.05,
@@ -239,7 +276,6 @@ ggsave(tl_plot, filename='./tl_plot.png', width=8, height=5)
 tl_plot
 ```
 
-
 Now we turn the continuous upvote response variable into a binary response. We choose 1000 upvotes as our cut-off, because that seems to be the approximate threshold where a post will end up on the front page of the subreddit, or the front page of the entire website.
 
 ```{r}
@@ -259,9 +295,9 @@ reddit_df$cat_upvotes <- factor(reddit_df$cat_upvotes)
 ```
 
 
-##Model Building
+## Section 4: Model Building and Assessment
 
-Finally, we are ready to build our Random Forest model. We partition the data into test and training, setting aside the test data so that we can appropriately assess our model's accuracy. 
+After wrangling the data, we are ready to build our Random Forest model. We partition the data into test and training sets, setting aside the test data so that we can appropriately assess our model's accuracy. 
 
 ```{r}
 #Packages required for model building
@@ -277,15 +313,13 @@ reddit.train <- reddit_df[inTrain,]
 reddit.test <- reddit_df[-c(inTrain),]
 ```
 
-By looking at the number of observations in tach category below, we see that predicting everything as "low" gives a fairly high accuracy! To avoid this, we will sample from our training set to have equal number of "high" and "low" responses. 
+By looking at the number of observations in each category below, we see that predicting everything as "low" gives a fairly high accuracy. In other words, for the model, there is little consequence in masclassifying the posts with "high" upvotes. To avoid this problem in building our model, we sample from our training set to have an equal number of observations with "high" and "low" upvotes. 
 
 ```{r}
 #Print the number of observations in each category
 sum(reddit.train['cat_upvotes'] == "High")
 sum(reddit.train['cat_upvotes'] == "Low")
 ```
-
-We sample from the "low" training data so that it now has the same number of observations as the high.
 
 ```{r}
 ### Sample data such that there is a equal number of observations for each category.
@@ -325,7 +359,7 @@ rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
 rf.reddit$finalModel
 ```
 
-The model with the best accuracy corresponds to mtry = . Using this best model, we predict our test data to assess our model's accuracy. 
+The model with the best accuracy corresponds to mtry = 3. Using this best model, we predict our test data to assess our model's accuracy. 
 
 ```{r}
 #mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
@@ -333,22 +367,13 @@ confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = redd
 ```
 
 Now, we print the variable importance for the model. This gives us an indication of which explanatory variables most directly impact the response. 
+
 ```{r}
 varImp(rf.reddit,scale=FALSE)
 ```
 
-Print the posts with the most positive title sentiments
-```{r}
-reddit_df_read %>%
-  arrange(desc(title_sent)) %>%
-  select(title_sent,title) %>%
-  head()
-```
+Of the variables that we use in our model, the output above suggests that the five most important variable contributing to the popularity of a post are: 1. Length of the title of the post, 2. Whether there is a thumbnail accompanying the post, 3. The average length of words in the title, 4. The $h$ index of content linked to in the post, and 5. Whether the post was published between the hours of 6PM-3AM PST (nighttime). 
 
-Print the posts with the most negative title sentiments
-```{r}
-reddit_df_read %>%
-  arrange(title_sent) %>%
-  select(title_sent,title) %>%
-  head()
-```
+## Section 5: Conclusions
+
+In this project, we attempt to look for variables that may affect whether a science post on Reddit gathers a large number of upvotes. 
