@@ -6,7 +6,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=FALSE, 
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, 
                       fig.width=7, fig.height=3, fig.align = "center")
 ```
 
@@ -43,7 +43,6 @@ library(readr)
 require(ggplot2)
 library(stringr)
 ```
-
 
 ```{r}
 #Read the reddit data into a dataframe
@@ -324,6 +323,8 @@ sum(reddit.train['cat_upvotes'] == "Low")
 ```{r}
 ### Sample data such that there is a equal number of observations for each category.
 
+set.seed(4747)
+
 #Count the number of high upvotes
 num_high_upvote <- sum(reddit.train['cat_upvotes'] == "High")
 
@@ -342,10 +343,10 @@ reddit.train.final <- rbind(reddit.train.low, reddit.train.high)
 
 ```{r}
 #Check that the numbers are equal.
-reddit_df %>% group_by(cat_upvotes) %>% summarize(n())
+reddit.train.final %>% group_by(cat_upvotes) %>% summarize(n())
 ```
 
-Now we grow the random forest, using the out of bag error rate to tune the mtry parameter (number of variables at each split). 
+Now we grow the random forest, using the out of bag (OOB) error rate to tune the `mtry` parameter (number of variables at each split). 
 
 ```{r}
 #Build the random forest model
@@ -355,18 +356,24 @@ rf.reddit <- train(cat_upvotes ~., data=reddit.train.final, method="rf",
                       trControl = trainControl(method="oob"),
                       ntree=1000, tuneGrid = data.frame(mtry=c(3,5,7,9,11)),
                       importance = TRUE,na.action = na.exclude)
+```
 
+```{r}
+rf.reddit
+```
+
+```{r}
 rf.reddit$finalModel
 ```
 
-The model with the best accuracy corresponds to mtry = 3. Using this best model, we predict our test data to assess our model's accuracy. 
+The model with the best accuracy corresponds to `mtry` = 3. Using this best model, we predict our test data to assess our model's accuracy. 
 
 ```{r}
 #mean((log(reddit.test$upvotes+1) - predict(rf.reddit, newdata = reddit.test))^2)
 confusionMatrix(data=predict(rf.reddit, newdata = reddit.test), reference = reddit.test$cat_upvotes)
 ```
 
-Now, we print the variable importance for the model. This gives us an indication of which explanatory variables most directly impact the response. 
+The confidence interval for the accuracy of the model is between 0.5923 and 0.6219, which is greater than 50%: this suggests that there \textit{is} information, i.e., that there is a basis on which to distinguish opular posts from less popular posts. With that in mind, we print the variable importance from the model, which indicates which explanatory variables most directly impact the response: 
 
 ```{r}
 varImp(rf.reddit,scale=FALSE)
@@ -374,6 +381,18 @@ varImp(rf.reddit,scale=FALSE)
 
 Of the variables that we use in our model, the output above suggests that the five most important variable contributing to the popularity of a post are: 1. Length of the title of the post, 2. Whether there is a thumbnail accompanying the post, 3. The average length of words in the title, 4. The $h$ index of content linked to in the post, and 5. Whether the post was published between the hours of 6PM-3AM PST (nighttime). 
 
+The first one might be because post titles that summarize the content of the article are better. Thumbnails give an article more legitimacy, so the second one also makes sense. The third and the fourth should be interpreted together. Whether a journal has a low $h$ index might correspond to whether it was a pop science article, which in turn might be shorter words in the title because --> this also makes sense, because easier for users to understand. It also seems important to post
+
+The next two important variables after the first 5 are whether the post is in health, biology-- which we might expect, since people might be more inclined to pay attention to studies that are more pertinent to their condition (health is a topic that easily links to elements of the human condition).
+
 ## Section 5: Conclusions
 
-In this project, we attempt to look for variables that may affect whether a science post on Reddit gathers a large number of upvotes. 
+In this project, we attempt to look for variables that may affect whether a science post on Reddit gathers a large number of upvotes. From the results of the previous section, we find that the most important variables are post title length, whether there is a thumbnail, the average length of a word in the title, whether the post links to a high-impact scientific journal, and whether the the post was published at nighttime PST. It seems that whether the post.
+
+overall, these results suggest a kind of "fast-food" model of scientific media consumption, in which users want to get the gist of the post. The variables suggest that the posts that resonate with users are the ones that convey the point of the post quickly. Posts with subfields that are more relevant or relateable may also contribute to the popularity of a post. 
+
+\textit{Data generalizability}: something about how Reddit isn't representative of the population, but the results generally make sense given our experiences with scientific communication. seems wishy washy though because the extent of our project doesn't let us go into that much more detail... segue into next small section
+
+\textit{What held us back}: not being able to get more information from our posts, especially from the specifics of post title or even post content (because we did have access to the URL) --> sentiment analysis fell short, tackling the other problem would've required more time than we probably had
+
+\textit{Concluding remarks}: something that links abck to the motivating question... wax eloquence here
