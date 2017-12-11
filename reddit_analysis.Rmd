@@ -1,5 +1,6 @@
 ---
 title: "Investigating the Popularity of Scientific Phenomena on Social Media Platforms"
+author: "Sal Fu, Brian Lorenz, Jerry Xuan"
 output:
   pdf_document: default
   html_document: default
@@ -16,21 +17,21 @@ Large numbers of scientific studies are published each day, many of which addres
 
 We choose Reddit as our platform for analysis because it is the 8th most visited site around the world, with over 500 million users total. This particular platform is convenient because it has a specific forum, the "Science" subreddit, that is dedicated to sharing and discussing scientific results. This particular subreddit can also reach a broad viewership because all Reddit users are subscribed to it by default (at the time this was written, the "Science" subreddit has around 18 million subscribers). 
 
-On Reddit, users can post content and "Upvote" the posts that they like. Within a subreddit, posts with higher upvotes will end up on the first page of the subreddit (e.g. they are the first posts that users will see when they visit the subreddit). When a post in "Science" gathers enough votes, it will end up on the "Reddit" frontpage, where it will get an even large viewership (i.e.: all Reddit users will see the post when they open the website). 
+On Reddit, users can post content and "Upvote" the posts that they like. Within a subreddit, posts with higher upvotes will end up on the first page of the subreddit (e.g. they are the first posts that users will see when they visit the subreddit). When a post in "Science" gathers enough votes, it will end up on the "Reddit" frontpage, where it will get an even large viewership (i.e., all Reddit users will see the post when they open the website). 
 
-For this work, we will use "Upvotes" as our metric of whether a scientific article is popular: e.g., our response variable. We plan to build a random forest model to understand which variables may contribute the most to whether a scientific article garners a large number of votes.
+For this work, we will use "Upvotes" as our metric of whether a scientific article is popular: i.e., our response variable. We plan to build a random forest model to understand which variables may contribute the most to whether a scientific article garners a large number of votes.
 
 The structure of this document is as follows: In section 2, we describe how we acquire data from Reddit, and how we use that data to acquire more information about the posts. In section 3, we describe the process of manipulating various columns to make our model more robust. In section 4, we describe the process of model building and interpretation. In Section 5, we summarize our results and interpret them in the context of our broader question.  
 
 ## Section 2: Data Acquisition and Modification
 
-Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit ranging back two years. We select the number of upvotes that a post has, as that will be our metric of popularity. We then select columns that contain information about what we believe will be relevant variables in assessing a post's popularity: among some are the length of the post title, the time at which the post was created, the amount of "karma" the post author has, and the number of comments on the post. 
+Using the Python Reddit API Wrapper, we obtain data about individual posts in the "Science" subreddit for the past two years (from Nov 2015 to Nov 2017). We query the number of upvotes that a post has, as that will be our metric of popularity. We also query for fields that represent explanatory variables, variables which could potentially be used to predict a post's popularity. For instance, these include the title of the post, the time at which the post was created, the amount of "karma" the post's author has, the number of comments on the post, the scientific subfield of the post, and so on.
 
-From the fields that we queried, we attempted to extract more information about each obsevation. As we acquired data from the API, we create an explanatory variable called the "journal $h$ index", which tracks posts linking to "high-impact" scientific articles. For this part, we reference the $h$ index rankings Scimago Country and Rank (scimagojr.com), and define posts with a high $h$ index as those that link to journals which are in the top 10 of the $h$ index rankings. When attempting to download the data, some explanatory variables were not in a readable format for .csv, but some characters broke that encoding. As a result, we acquired the data from November 2015-November 2017 in 9 chunks. The results from the API query are saved in the repository as `reddit_df_final[number].csv`. 
+With the fields that we queried as a basis, we extract additional information from them. For example, as we acquired data from the API, we create an explanatory variable called the "journal $h$ index", which tracks posts that link to "high-impact" scientific articles. For this, we reference the $h$ index rankings from Scimago Country and Rank (scimagojr.com), and define posts with a high $h$ index as those that link to journals which are in the top 10 of the $h$ index rankings. When attempting to download the data, some explanatory variables were not in a readable format for a .csv file, so they required encoding. However, a few characters in the past two years of data broke that encoding. As a result, we acquired the data from November 2015-November 2017 in 9 chunks. The results from the API query are saved in the repository as `reddit_df_final[number].csv`. 
 
-After we have this dataset, we attempt to perform sentiment analysis on the dataset. The sentiment analysis code is in the `sentiment_analysis.rmd` file, which we use to process the files from our query.
+After we have generated this dataset, we work to extract additional information out of the post titles. First, we calculated the total length, mean word length, and max word length of each title. Then, we perform sentiment analysis on the titles to obtain a sentiment score for each title. All these became new explanatory variables for our data.
 
-This is how the code works: we obtain the corpus of words from SentiWordNet,  which assigns nearly every word in the English language a positive or negative index with a value between 0 and 1. From each of our post titles, we remove "stopwords" like "about", "the", etc. (which generally don't have positive or negative connotations) Taking words with an overall positive meaning to have a positive value, and treating negatively-connotating words analogously, we sum up the total indices of the remaining words in the title. We then divide that sum by the number of words to acquire our desired variable, which can be thought of as the title's sentiment "density." 
+The title sentiment analysis works as follows: we obtain the corpus of words from SentiWordNet,  which assigns nearly every word in the English language a positive or negative index with a value between 0 and 1. From each of our post titles, we remove "stopwords" like "about" and "the" (words which do not have positive or negative connotations). Taking words with an overall positive meaning to have a positive value, and treating negatively-connotating words analogously, we sum up the total indices of the remaining words in the title. We then divide that sum by the number of words in the title to acquire our desired variable, which can be thought of as the title's sentiment "density". 
 
 We save the results of this analysis in the repository as `reddit_df_final[number]_sent.csv`. In the code below, we read in the fields: 
 
@@ -56,13 +57,15 @@ reddit_df_final7 <- read_csv("reddit_df_final7_sent.csv")
 reddit_df_final8 <- read_csv("reddit_df_final8_sent.csv")
 reddit_df_final9 <- read_csv("reddit_df_final9_sent.csv")
 
-reddit_df <- rbind(reddit_df_final1,reddit_df_final2,reddit_df_final3,reddit_df_final4,reddit_df_final5,reddit_df_final6,reddit_df_final7,reddit_df_final8,reddit_df_final9)
+reddit_df <- rbind(reddit_df_final1,reddit_df_final2,reddit_df_final3,
+                   reddit_df_final4,reddit_df_final5,reddit_df_final6,
+                   reddit_df_final7,reddit_df_final8,reddit_df_final9)
 
 #Store a copy of the dataframe for later use
 reddit_df_read <- reddit_df
 ```
 
-We wanted to get a sense for whether sentiment analysis, so to do this, we looked at the six titles with the most "positive" sentiment and the most "negative" sentiments; the code below prints out these values: 
+We wanted to get a sense for whether sentiment analysis worked as expected, so we looked at the titles with the most "positive" sentiment and the most "negative" sentiments; the code below prints out these values: 
 
 ```{r}
 reddit_df_read %>%
@@ -71,9 +74,9 @@ reddit_df_read %>%
   head()
 ```
 
-The most positive two titles are: "Nonnutritive sweeteners and cardiometabolic health" and "Babies know when they don't know something". Some of these are reasonable? But others are: "Happiness doesn't bring good health, study finds," and "Facebook posts inspired by envy, UBC study finds." For some of these, we can begin to back out how the issues might have occurred. e.g. "Happiness doesn't bring good health" has positive words like "happiness," "good," and "health", which can make the average sentiment of the title positive even if the presence of the single negation "doesn't" alters the overall meaning of the sentiment. 
+The most positive two titles are: "Nonnutritive sweeteners and cardiometabolic health" and "Babies know when they don't know something". Some of these are reasonable? But others are: "Happiness doesn't bring good health, study finds," and "Facebook posts inspired by envy, UBC study finds." For some of these, we can see where the sentiment analysis failed. For instance, "Happiness doesn't bring good health" has positive words like "happiness," "good," and "health", which can make the average sentiment of the title positive even if the presence of the single negation "doesn't" alters the overall meaning of the sentiment. 
 
-Print the posts with the most negative title sentiments
+Printing the posts with the most negative title sentiments:
 
 ```{r}
 reddit_df_read %>%
@@ -82,11 +85,11 @@ reddit_df_read %>%
   head()
 ```
 
-Sentiment analysis was a good exercise, but it is unclear whether it would be a meaningful predictor of our response variable.
+Sentiment analysis was a great exercise, but latter when we computed variable importance for our random forest model, we see that its lack of robustness meant that it was not a meaningful predictor for our response variable.
 
 ## Section 3: Variable Modification
 
-After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We use the code below to translate that metric of time into year, date, and hour.
+After retrieving the data, we take multiple steps to wrangle it into a format that makes more sense given the variables we are trying to investigate. The data for "Time" that we retrieve from is in units of seconds elapsed from January 1st, 1970 in UTC time. We thus use the code below to translate that metric of time into year, date, and hour.
 
 ```{r}
 #Store all of the POSIX dates into a vector
@@ -94,10 +97,11 @@ dates <- as.POSIXct(reddit_df$created_utc,origin = "1970-01-01",tz = "UTC")
 
 #Use lubridate to read y,m,d,h from that vector. Create new columns for these
 reddit_df <- reddit_df %>%  
-  mutate(post_year = year(dates),post_month = month(dates), post_day = day(dates), post_hour = hour(dates))
+  mutate(post_year = year(dates),post_month = month(dates), post_day = day(dates),
+         post_hour = hour(dates))
 ```
 
-After obtaining that information, we create a categorical variable for "time" to categorize the time of day that the post was created into "Day", "Morning", and "Night". This step was necessary because otherwise, the classification algorithm would not classify "23" and "0" as the same portion of the day (time wise), which would change with our results. 
+After obtaining that information, we create a categorical variable for "time" to categorize the time of day that the post was created into "Day", "Morning", and "Night". This step was necessary because otherwise, the classification algorithm would not classify "23" and "0" as the same portion of the day (time wise), which would change with our results. Furthermore, having 24 categories for hour would not be ideal for CART, which random forests are built on.
 
 ```{r}
 #Create a new column for categorical time of day
@@ -118,7 +122,8 @@ mk_cat_day <- function(d)
 #Time ranges: Dec-Feb: Winter   Mar-May: Spring    Jun-Aug: Summer    Sep-Nov: Fall
 mk_cat_month <- function(m)
 {
-  ifelse(m>11, "Winter", ifelse(m>8, "Fall", ifelse(m>5, "Summer", ifelse(m>2, "Spring", "Winter"))))
+  ifelse(m>11, "Winter", ifelse(m>8, "Fall", 
+                                ifelse(m>5, "Summer", ifelse(m>2, "Spring", "Winter"))))
 }
 
 reddit_df <- reddit_df %>%
@@ -127,16 +132,15 @@ reddit_df <- reddit_df %>%
   mutate(cat_post_month = mk_cat_month(post_month)) 
 ```
 
-Next, we clean up the data in order to remove posts that do not share scientific content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. 
+Next, we clean up the data in order to remove posts that do not share scientific content (e.g. AMAs, subreddit discussions) by filtering under the subfield column. We also remove all subfields that have less than 100 posts, since these were mostly errorneously named subfields that had only 1 post.
 
 ```{r}
 #Filter by removing the Ask Me Anything (AMA) threads and the subreddit discussion
   #threads since these are not studies. 
 reddit_df <- reddit_df %>%
   filter(!str_detect(subfield, " AMA")) %>%
-  filter(subfield != "Mathematics") %>%
   group_by(subfield) %>%
-  filter(n() > 50)
+  filter(n() > 100)
 
 #Display the remaining subfields
 count(reddit_df,subfield)
@@ -145,10 +149,18 @@ count(reddit_df,subfield)
 Now, we group the remaining subfields into four major categories so that our model can more easily divide among them. We made these selections by our impressions of the categories that these fields fall into, so this step is certainly subjective. 
 
 ```{r}
-#Make a function that sorts fields into "Life Science," "Psychology," "Physical Science," "Environment"
+#Make a function that sorts fields into "Life Science,"
+#"Psychology," "Physical Science," "Environment"
 mk_cat_subfield <- function(field)
 {
-  ifelse(field == "Biology" | field =="Health" | field =="Cancer" | field =="Medicine" | field =="Animal Science" | field =="Paleontology" | field =="Epidemiology", "Life Science", ifelse(field =="Psychology" | field =="Neuroscience" | field =="Social Science" | field =="Anthropology", "Psychology", ifelse(field =="Geology" | field =="Astronomy" | field =="Physics" | field =="Chemistry" | field =="Nanoscience" | field =="Engineering" | field =="Computer Science", "Physical Science", "Environment")))
+  ifelse(field == "Biology" | field =="Health" | field =="Cancer" | 
+           field =="Medicine" | field =="Animal Science" | field =="Paleontology" | 
+           field =="Epidemiology", "Life Science", ifelse(field =="Psychology" |
+           field =="Neuroscience" | field =="Social Science" |
+            field =="Anthropology", "Psychology",
+           ifelse(field =="Geology" | field =="Astronomy" | field =="Physics" |
+            field =="Chemistry" | field =="Nanoscience" | field =="Engineering" |
+            field =="Computer Science", "Physical Science", "Environment")))
 }
 #Apply the function and remove the old column
 reddit_df <- reddit_df %>%
@@ -159,22 +171,21 @@ reddit_df <- reddit_df %>%
 reddit_df$cat_subfield <- factor(reddit_df$cat_subfield)
 ```
 
-Here we make a plot of the distribution of articles into these four categories, saved as subfield_chart.png
-
-```{r}
-subfield_freq
-```
+Here we make a pie plot of the distribution of articles into these four categories:
 
 ```{r}
 subfield_freq = table(reddit_df$cat_subfield)
 type_freq_perc = paste(round((subfield_freq/length(reddit_df$cat_subfield)),2)*100,
                        "%",sep="")
-type_freq_lab = paste(c("Environment","Life science", "Physical science", "Psychology"), type_freq_perc, sep = " ")
+type_freq_lab = paste(c("Environment","Life science",
+                        "Physical science", "Psychology"), type_freq_perc, sep = " ")
 #png("subfield_chart.png", width=8, height=6, units="in", res=500)
-pie(subfield_freq,labels=type_freq_lab, init.angle = 51, edges = 10000, col = c("paleturquoise3","darkseagreen4","slateblue4","plum2"), main="Distribution of Subfields")
+pie(subfield_freq,labels=type_freq_lab, init.angle = 51,edges = 10000,
+    col = c("paleturquoise3","darkseagreen4","slateblue4","plum2"), main="Distribution of Subfields")
 #dev.off()
 ```
 
+Here we turn the categorical variables to factors, which the caret random forest model expects.
 ```{r}
 #Turn all categorical variables into factors
 reddit_df$author_flair_binary <- factor(reddit_df$author_flair_binary)
@@ -186,7 +197,9 @@ reddit_df$cat_post_hour <- factor(reddit_df$cat_post_hour)
 reddit_df$cat_post_day <- factor(reddit_df$cat_post_day)
 ```
 
-Author created date vs upvotes -- bias from single high-karma user 'mvea'. Thus we removed this observations posted by this user from the data.
+Next we plot select explanatory variables against our response variable to get a sense of the correlations.
+
+Author created date vs upvotes. We see a few vertical lines of dots (e.g. the one near 1.15e+09), which we looked into and realized that they are single authors that are prolific on Reddit! Since these outliers could bias our model's prediction vis-a-vis author_created_date, we later remove that column from the dataframe.
 
 ```{r}
 acd_plot <- ggplot(data=reddit_df, aes(x=author_created_date, y=upvotes))+
@@ -199,7 +212,7 @@ acd_plot <- ggplot(data=reddit_df, aes(x=author_created_date, y=upvotes))+
 acd_plot
 ```
 
-Number of comments vs upvotes -- expected strong positive correlation. Coupled with response.
+Number of comments vs upvotes. This is an example of a variable that shows strong positive correlation with our response variable. Indeed, we could have used number of comments instead of upvotes as our response variable and achieved a very similar model. To create a fair and meaningful prediction model, we thus remove num_comments and other highly correlated variables (link_karma,comment_karma, and gilded).
 
 ```{r}
 nc_plot <- ggplot(data=reddit_df, aes(x=num_comments, y=upvotes))+
@@ -215,10 +228,12 @@ nc_plot
 ```{r}
 #To prepare for model building, we remove unnecessary columns and ones correlated with response
 reddit_df <- reddit_df %>%
-  select(-X1,-author,-id,-created_utc,-domain,-url,-author_flair,-post_day,-post_hour,-post_month,-num_comments,-gilded,-link_karma,-comment_karma,-title,-X1_1,-author_created_date)
+  select(-X1,-author,-id,-created_utc,-domain,-url,-author_flair,-post_day,
+         -post_hour,-post_month,-num_comments,-gilded,-link_karma,
+         -comment_karma,-title,-X1_1,-author_created_date)
 ```
 
-Now we remove any rows that have missing values. We also print the proportion of rows removed below to ensure that we are not removing a large fraction of the data. The vast majority of these removed rows are due to authors that have since deleted their accounts, so all of their data is missing. 
+Now we remove any rows that have missing values (NAs). We also print the proportion of rows removed below to ensure that we are not removing a large fraction of the data. It is comforting to see that only 0.02% of our observations contained any NAs.
 
 ```{r}
 bef_rm <- nrow(reddit_df)
@@ -230,7 +245,7 @@ aft_rm <- nrow(reddit_df)
 paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
 ```
 
-Here we plot a histogram of the number of upvotes, showing that the vast majority of our data has "low" (<1000) upvotes:
+Here we plot a histogram of the number of upvotes, showing that the vast majority of our data has "low" (<1000) upvotes. The huge range (from 0 to 100000), and high level of skewedness of upvotes motivate us to separate our response into a binary variable.
 
 ```{r}
 hist_upvotes <- qplot(log10(reddit_df$upvotes+1),
@@ -249,7 +264,7 @@ hist_upvotes
 #ggsave(hist_upvotes, filename='./hist_upvotes.png', width=8, height=5)
 ```
 
-Here, we plot the mean title word length vs. number of upvotes: 
+Here, we plot the mean title word length vs. number of upvotes. There appears to be a sweet spot around 5. It appears that lower mean title word lengths give higher upvotes. There are, however, more posts near the low range too, so we cannot make that conclusion just yet.
 
 ```{r}
 mtl_plot <- ggplot(data=reddit_df, aes(x=mean_title_length, y=upvotes))+
@@ -262,7 +277,7 @@ mtl_plot
 #ggsave(mtl_plot, filename='./mtl_plot.png', width=8, height=5)
 ```
 
-Here, we plot the total title length vs. number of upvotes: 
+Here, we plot the total title length vs. number of upvotes. No strong correlation could be seen. 
 
 ```{r}
 tl_plot <- ggplot(data=reddit_df, aes(x=title_len, y=upvotes))+
@@ -275,7 +290,7 @@ ggsave(tl_plot, filename='./tl_plot.png', width=8, height=5)
 tl_plot
 ```
 
-Now we turn the continuous upvote response variable into a binary response. We choose 1000 upvotes as our cut-off, because that seems to be the approximate threshold where a post will end up on the front page of the subreddit, or the front page of the entire website.
+Now we turn the continuous upvote response variable into a binary response. We choose 1000 upvotes as our cut-off, because that is the approximate threshold where a post will end up on the front page of the Science subreddit, from which it could reach the front page of the entire website.
 
 ```{r}
 #Create a new column for categorical upvotes
@@ -332,7 +347,9 @@ reddit.train.high <- subset(reddit.train, reddit.train['cat_upvotes'] == "High")
 reddit.train.low <- subset(reddit.train, reddit.train['cat_upvotes'] == "Low")
 
 #Select an equal proportion of high and low upvotes
-inTrain.low <- createDataPartition(y = reddit.train.low$cat_upvotes, p=num_high_upvote/dim(reddit.train.low)[1], list=FALSE)
+inTrain.low <- createDataPartition(y = reddit.train.low$cat_upvotes,
+                                   p=num_high_upvote/dim(reddit.train.low)[1],
+                                   list=FALSE)
 reddit.train.low <- reddit.train.low[inTrain.low,]
 ```
 
