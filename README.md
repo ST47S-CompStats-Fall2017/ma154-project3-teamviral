@@ -66,3 +66,7 @@ Hi, team viral!  Seems like you are well on your way.  You should check out the 
 Seems like you have a lot of new stuff to learn.  I'd recommend doing one thing at a time.  I like the idea of group effort, but maybe all of you should investigate sentiment analysis so that you can talk to one another and bounce ideas around.  And then move to neural networks.
 
 You are in good shape!  Let me know if/when you have any questions.  -JH
+
+###Presentation
+Pdf can be found in the repo, and the editable version is here:
+https://docs.google.com/presentation/d/1XQjcbkE_-deVCwuIRn500gd3TsLtjMviDk0dEn2rH_4/edit?usp=sharing
