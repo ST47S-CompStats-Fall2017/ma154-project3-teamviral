@@ -31,7 +31,7 @@ With the fields that we queried as a basis, we extract additional information fr
 
 After we have generated this dataset, we work to extract additional information out of the post titles. First, we calculate the total length, mean word length, and max word length of each title. Then, we perform sentiment analysis on the titles to obtain a sentiment score for each title. All these became new explanatory variables for our data.
 
-The title sentiment analysis works as follows: we obtain the corpus of words from SentiWordNet,  which assigns nearly every word in the English language a positive or negative index with a value between 0 and 1. From each of our post titles, we remove "stopwords" like "about" and "the" (words which do not have positive or negative connotations). Taking words with an overall positive meaning to have a positive value, and treating negatively-connotating words analogously, we sum up the total indices of the remaining words in the title. We then divide that sum by the number of words in the title to acquire our desired variable, which can be thought of as the title's sentiment "density". 
+The title sentiment analysis works as follows: we obtain the corpus of words from SentiWordNet, which assigns nearly every word in the English language a positive or negative index with a value between 0 and 1. From each of our post titles, we remove "stopwords" such as "about" and "the" (words which do not have positive or negative connotations). Taking words with an overall positive meaning to have a positive value, and treating negatively-connotating words analogously, we sum up the total indices of the remaining words in the title. We then divide that sum by the number of words in the title to acquire our desired variable, which can be thought of as the title's sentiment "density". 
 
 As the sentiment code takes multiple hours to run on our laptops, we have performed the analysis and saved the results in the repository as `reddit_df_final[number]_sent.csv`, with `[number]` matching the number index of the dataframe. In the interest of reproducibility, we have left a toggle setting below: if you set skip=FALSE, then the sentiment analysis will run before the rest of the code and recreate the `reddit_df_final[number]_sent.csv` files. If skip=TRUE (default), then the code runs by reading in the files that we have already performed the analysis on. 
 
@@ -174,7 +174,7 @@ reddit_df %>%
   head(n=5L)
 ```
 
-Sentiment analysis was a great exercise, but late,r when we computed variable importance for our random forest model, we will that its lack of robustness meant that it was not a meaningful predictor for our response variable.
+Sentiment analysis was a great exercise, but later, when we computed variable importance for our random forest model, we will that its lack of robustness meant that it was not a meaningful predictor for our response variable.
 
 ## Section 3: Variable Modification
 
@@ -318,7 +318,7 @@ ggsave(nc_plot, filename='./nc_plot.png', width=8, height=5)
 nc_plot
 ```
 
-The other columns removed below are due to conversions to categorical varialbes (i.e. post_hour is now irrelevant since we have cat_post_hour, breaking that variable into three times of day).
+The other columns removed below are due to conversions to categorical variables (i.e. post_hour is now irrelevant since we have cat_post_hour, breaking that variable into three times of day).
 
 ```{r, echo=TRUE}
 #To prepare for model building, we remove unnecessary columns
@@ -340,7 +340,7 @@ aft_rm <- nrow(reddit_df)
 paste("Proportion of rows removed: ",(bef_rm-aft_rm)/bef_rm)
 ```
 
-Here we plot a histogram of the number of upvotes, showing that the vast majority of our data has "low" (<1000) upvotes. The huge range (from 0 to 100000) and high level of skewedness of upvotes motivate us to separate our response into a binary variable. Before we do so,we examine two more plots:
+Here we plot a histogram of the number of upvotes, showing that the vast majority of our data has "low" (<1000) upvotes. The huge range (from 0 to 100000) and high level of skewedness of upvotes motivate us to separate our response into a binary variable. Before we do so, we examine two more plots:
 
 ```{r, echo=TRUE}
 hist_upvotes <- qplot(log10(reddit_df$upvotes+1),
@@ -406,7 +406,7 @@ reddit_df$cat_upvotes <- factor(reddit_df$cat_upvotes)
 
 ## Section 4: Model Building and Assessment
 
-After wrangling the data, we are ready to build our Random Forest model. We partition the data into test (20%) and training (80%) sets, setting aside the test data for later use to appropriately assess our model's accuracy. We did not apply this test data until after finalizing and tuning our model, so it will be an independant assessment of accuracy. 
+After wrangling the data, we are ready to build our Random Forest model. We partition the data into test (20%) and training (80%) sets, setting aside the test data for later use to appropriately assess our model's accuracy. We did not apply this test data until after finalizing and tuning our model, so it will be an independent assessment of accuracy. 
 
 ```{r, echo=TRUE}
 #Set the seed for reproducibility
