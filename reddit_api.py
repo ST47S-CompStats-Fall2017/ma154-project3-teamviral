@@ -10,8 +10,6 @@
 #
 # The python api wrapper can be found here:
 # https://github.com/praw-dev/praw
-#
-# Try runnning the code below:
 
 import pprint
 import praw
@@ -30,24 +28,23 @@ reddit = praw.Reddit(client_id='rNGwNS4hRPJDfw', client_secret="WAe0pEENwYhWu6tE
 ## Convert to epoch timestamp via https://www.epochconverter.com/
 ## Retrieving data from the past 2 years:
 
-start_time = 1449400000
-#start_time = 1512614932-100000
+##Due to errors with the reddit post characters, we had to run this in 9 chunks. The start and end times can be found here, and should be modified along with the csv_path below to recreate our data exactly:
+#Number      #End        #Start
+#1:       1512097409    1496302522
+#2:       1496291678    1493729485
+#3:       1480478654    1469185637
+#4:       1464695476    1448900355
+#5:       1469098822    1467287747
+#6:       1491999970    1491999970
+#7:       1487099881    1483710465
+#8:       1467099725    1464698495
+#9:       1483597268    1480509330
+
 end_time = 1512614932
+start_time = 1449400000
 
-#this is the list of dictionary names that we can use to pull data from vars(submission)
 
-#domain
-#link_flair_text = categorization of the article (sub science field)
-#author - Reddit object
-#author_flair_css_class
-#ups: total upvotes(?)
-#created_utc (time of creation)
-#num_comments
-#author_flair_text
-#gilded (somebody thought it was worth spending money on this)
-#preview
-
-# Columns
+# Columns for dataframe
 id_list = []
 url_list = []
 title_list = []
@@ -75,7 +72,7 @@ for submission in reddit.subreddit('science').submissions(
 
     count = count + 1
 
-    # Turns out that the images in the preview-images subdictionary are copies of the same image
+    # The images in the preview-images subdictionary are copies of the same image
     # with different sizes. Thus, making preview-images a binary variable makes more sense.
     try:
         preview = vars(submission)['preview']['images'][0]
@@ -95,7 +92,6 @@ for submission in reddit.subreddit('science').submissions(
 
     domain = vars(submission)['domain']
     domain_list.append(domain)
-    # print (domain)
     # Binary variable for high impact journals and low impact journal/mere websites
     # Journal impact determined by its h-index. See here for a ranking:
     # http://www.scimagojr.com/journalrank.php?order=h&ord=desc
@@ -105,8 +101,6 @@ for submission in reddit.subreddit('science').submissions(
                    'thelancet.com', 'jamanetwork.com', 'aps.org', 'acs.org', 'circ.ahajournals.org']
 
     if any(substring in domain for substring in h_index_500):
-        #print ('high')
-        #pprint.pprint(vars(submission), width=1)
         journal_h_index_list.append('high')
     else:
         journal_h_index_list.append('low')
@@ -120,24 +114,21 @@ for submission in reddit.subreddit('science').submissions(
     user = reddit.redditor(author)
     #print (user)
 
-    # Apparantly some authors are no longer on reddit,
+    # Some authors are no longer on reddit,
     # so they return errors for the author info queries below.
-    # We could ignore these authors by assigining NA to the following 3 fields.
+    # We ignore these authors by assigining NA to the following 3 fields.
     try:
         link_karma_list.append(user.link_karma)
     except:
-        #print ('error in link karma')
         link_karma_list.append('NA')
     try:
         comment_karma_list.append(user.comment_karma)
     except:
         comment_karma_list.append('NA')
-        #print ('error in comment karma')
     try:
         author_created_list.append(user.created_utc)
     except:
         author_created_list.append('NA')
-        #print ('error in author created')
 
 
     author_flair = vars(submission)['author_flair_css_class']
@@ -191,27 +182,10 @@ reddit_df = pd.DataFrame(
      'image': image_list,
     })
 
-# Check out the dimensions of the df
+# Check out the dimensions of the dataframe
 print (reddit_df.shape)
 
-# Save the dataframe as a csv file for us to use in R
-# We could just save it in the git repo directory (aka current dir)
+# Save the dataframe as a csv file
 
 csv_path = './reddit_df.csv'
 reddit_df.to_csv(csv_path)
-
-# {u'enabled': False,
-#              u'images': [{u'id': u'uVgy8zxh8sx6w2qHXlIFftDyGEmqanxhX7qvnUfOzkE',
-#                           u'resolutions': [{u'height': 139,
-#                                             u'url': u'https://i.redditmedia.com/PTgOHqPxcNhco7Eccr7lKUThY_ITUe3rjBtGNQ1xx9A.jpg?fit=crop&crop=faces%2Centropy&arh=2&w=108&s=110a93aff008f292ef7e7015121b11e3',
-#                                             u'width': 108},
-#                                            {u'height': 279,
-#                                             u'url': u'https://i.redditmedia.com/PTgOHqPxcNhco7Eccr7lKUThY_ITUe3rjBtGNQ1xx9A.jpg?fit=crop&crop=faces%2Centropy&arh=2&w=216&s=ce3fb933cd2b59cbdbc14afac2cf547d',
-#                                             u'width': 216},
-#                                            {u'height': 413,
-#                                             u'url': u'https://i.redditmedia.com/PTgOHqPxcNhco7Eccr7lKUThY_ITUe3rjBtGNQ1xx9A.jpg?fit=crop&crop=faces%2Centropy&arh=2&w=320&s=d966489685b4db20e4fd732f734423db',
-#                                             u'width': 320}],
-#                           u'source': {u'height': 672,
-#                                       u'url': u'https://i.redditmedia.com/PTgOHqPxcNhco7Eccr7lKUThY_ITUe3rjBtGNQ1xx9A.jpg?s=5fbab60746d098fee6cfc714e2392485',
-#                                       u'width': 520},
-#                           u'variants': {}}]},
