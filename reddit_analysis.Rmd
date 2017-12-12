@@ -29,11 +29,207 @@ Using the Python Reddit API Wrapper, we obtain data about individual posts in th
 
 With the fields that we queried as a basis, we extract additional information from them. For example, as we acquired data from the API, we create an explanatory variable called the "journal $h$ index", which tracks posts that link to "high-impact" scientific articles. For this, we reference the $h$ index rankings from Scimago Country and Rank (scimagojr.com), and define posts with a high $h$ index as those that link to journals which are in the top 10 of the $h$ index rankings. When attempting to download the data, some explanatory variables were not in a readable format for a .csv file, so they required encoding. However, a few characters in the past two years of data broke that encoding. As a result, we acquired the data from November 2015-November 2017 in 9 chunks. The results from the API query are saved in the repository as `reddit_df_final[number].csv`, with `[number]` ranging from 1 to 9 in the order that they finished downloading (not necessarily chronological). 
 
+The code chunk below will run our python data aquisition code if you set eval=TRUE, though it must be modified with the start and end times listed in the code comments and run nine times if you wish to recreate our dataset exactly. However, our entire dataset is also available in this GitHub repository, so there is no need to rerun this chunk. 
+
+```{r, engine='python',echo=FALSE,eval=TRUE}
+# Created reddit account "compstatsf17" with password "Sagehen47!" (no quotes on either of those)
+#
+# registered app as compstats17_final_project
+# client_secret: WAe0pEENwYhWu6tErofV7T7QOR4
+# client_id: rNGwNS4hRPJDfw
+#
+# Connected app with the account compstatsf17, so now the app can access all functions of that user
+# The "state" of the user is the pseudo-random string (no quotes) "fenwiosj"
+# The code created when authorizing the user is (no quotes) "yE0L1_clkxrpp0mVpVthf-KQWlo"
+#
+# The python api wrapper can be found here:
+# https://github.com/praw-dev/praw
+
+import pprint
+import praw
+import pandas as pd
+
+# from IPython.display import display, HTML
+
+reddit = praw.Reddit(client_id='rNGwNS4hRPJDfw', client_secret="WAe0pEENwYhWu6tErofV7T7QOR4",
+                     password='Sagehen47!', user_agent='python:rNGwNS4hRPJDfw:v1.0 (by /u/compstats17)',
+                     username='compstatsf17')
+
+#print(reddit.user.me())
+
+#for submission in reddit.front.hot(limit=10):
+
+## Convert to epoch timestamp via https://www.epochconverter.com/
+## Retrieving data from the past 2 years:
+
+##Due to errors with the reddit post characters, we had to run this in 9 chunks. The start and end times can be found here, and should be modified along with the csv_path below to recreate our data exactly:
+#Number      #End        #Start
+#1:       1512097409    1496302522
+#2:       1496291678    1493729485
+#3:       1480478654    1469185637
+#4:       1464695476    1448900355
+#5:       1469098822    1467287747
+#6:       1491999970    1491999970
+#7:       1487099881    1483710465
+#8:       1467099725    1464698495
+#9:       1483597268    1480509330
+
+end_time = 1512614932
+start_time = 1449400000
+
+
+# Columns for dataframe
+id_list = []
+url_list = []
+title_list = []
+title_len_list = []
+score_list = []
+domain_list = []
+subfield_list = []
+author_list = []
+link_karma_list = []
+comment_karma_list = []
+author_created_list = []
+author_flair_list = []
+author_flair_binary_list = []
+total_upvotes_list = []
+created_utc_list = []
+num_comments_list = []
+gilded_list = []
+image_list = []
+journal_h_index_list = []
+
+count = 0
+## Searching posts from a given period of time in the SCIENCE subreddit
+for submission in reddit.subreddit('science').submissions(
+        start=start_time, end=end_time, extra_query=None):
+
+    count = count + 1
+
+    # The images in the preview-images subdictionary are copies of the same image
+    # with different sizes. Thus, making preview-images a binary variable makes more sense.
+    try:
+        preview = vars(submission)['preview']['images'][0]
+        image_list.append('yes')
+    except:
+        # print ('No images for this post')
+        image_list.append('no')
+
+    # Populate lists. I had to encode these to make the .to_csv work.
+    id_list.append(submission.id.encode('utf-8'))
+    url_list.append(submission.url.encode('utf-8'))
+    # Gives funny characters in csv file
+    title_list.append(submission.title.encode('utf-8'))
+    title_len = len((submission.title.encode('utf-8')).replace(' ',''))
+    title_len_list.append(title_len)
+    score_list.append(submission.score)
+
+    domain = vars(submission)['domain']
+    domain_list.append(domain)
+    # Binary variable for high impact journals and low impact journal/mere websites
+    # Journal impact determined by its h-index. See here for a ranking:
+    # http://www.scimagojr.com/journalrank.php?order=h&ord=desc
+
+    # List of substrings that the high impact journals (h-index > 500) would contain
+    h_index_500 = ['nature.com', 'sciencemag.org', 'nejm.org', 'cell.com', 'pnas.org',
+                   'thelancet.com', 'jamanetwork.com', 'aps.org', 'acs.org', 'circ.ahajournals.org']
+
+    if any(substring in domain for substring in h_index_500):
+        journal_h_index_list.append('high')
+    else:
+        journal_h_index_list.append('low')
+
+    subfield_list.append(vars(submission)['link_flair_text'])
+
+    author = str(vars(submission)['author'])
+    author_list.append(author)
+
+    # Variables associated with the author of the post
+    user = reddit.redditor(author)
+    #print (user)
+
+    # Some authors are no longer on reddit,
+    # so they return errors for the author info queries below.
+    # We ignore these authors by assigining NA to the following 3 fields.
+    try:
+        link_karma_list.append(user.link_karma)
+    except:
+        link_karma_list.append('NA')
+    try:
+        comment_karma_list.append(user.comment_karma)
+    except:
+        comment_karma_list.append('NA')
+    try:
+        author_created_list.append(user.created_utc)
+    except:
+        author_created_list.append('NA')
+
+
+    author_flair = vars(submission)['author_flair_css_class']
+    if not author_flair == None:
+        if len(author_flair) > 0:
+            author_flair_binary = 'yes'
+        else:
+            author_flair_binary = 'no'
+    else:
+        author_flair_binary = 'no'
+
+    author_flair_binary_list.append(author_flair_binary)
+    author_flair_list.append(author_flair)
+    total_upvotes_list.append(vars(submission)['ups'])
+    created_utc = vars(submission)['created_utc']
+    created_utc_list.append(created_utc)
+    if count % 100 == 0:
+        print ('Currently at epoch time of:')
+        print (created_utc)
+
+        print (len(author_list))
+        print (len(link_karma_list))
+        print (len(comment_karma_list))
+        print (len(author_created_list))
+        print (len(image_list))
+
+    num_comments_list.append(vars(submission)['num_comments'])
+    gilded_list.append(vars(submission)['gilded'])
+
+
+
+# Consolidate lists into one pandas data frame
+reddit_df = pd.DataFrame(
+    {'id': id_list,
+     'url': url_list,
+     'title': title_list,
+     'title_len': title_len_list,
+     'domain': domain_list,
+     'journal_h_index': journal_h_index_list,
+     'subfield': subfield_list,
+     'author': author_list,
+     'link_karma': link_karma_list,
+     'comment_karma': comment_karma_list,
+     'author_created_date': author_created_list,
+     'author_flair': author_flair_list,
+     'author_flair_binary': author_flair_binary_list,
+     'upvotes': total_upvotes_list,
+     'created_utc': created_utc_list,
+     'num_comments': num_comments_list,
+     'gilded': gilded_list,
+     'image': image_list,
+    })
+
+# Check out the dimensions of the dataframe
+print (reddit_df.shape)
+
+# Save the dataframe as a csv file
+
+csv_path = './reddit_df.csv'
+reddit_df.to_csv(csv_path)
+```
+
 After we have generated this dataset, we work to extract additional information out of the post titles. First, we calculate the total length, mean word length, and max word length of each title. Then, we perform sentiment analysis on the titles to obtain a sentiment score for each title. All these became new explanatory variables for our data.
 
 The title sentiment analysis works as follows: we obtain the corpus of words from SentiWordNet, which assigns nearly every word in the English language a positive or negative index with a value between 0 and 1. From each of our post titles, we remove "stopwords" such as "about" and "the" (words which do not have positive or negative connotations). Taking words with an overall positive meaning to have a positive value, and treating negatively-connotating words analogously, we sum up the total indices of the remaining words in the title. We then divide that sum by the number of words in the title to acquire our desired variable, which can be thought of as the title's sentiment "density". 
 
-As the sentiment code takes multiple hours to run on our laptops, we have performed the analysis and saved the results in the repository as `reddit_df_final[number]_sent.csv`, with `[number]` matching the number index of the dataframe. In the interest of reproducibility, we have left a toggle setting below: if you set skip=FALSE, then the sentiment analysis will run before the rest of the code and recreate the `reddit_df_final[number]_sent.csv` files. If skip=TRUE (default), then the code runs by reading in the files that we have already performed the analysis on. 
+As the sentiment code takes multiple hours to run on our laptops, we have performed the analysis and saved the results in the repository as `reddit_df_final[number]_sent.csv`, with `[number]` matching the number index of the dataframe. In the interest of reproducibility, we have left the chunk toggleable below. If you set eval=TRUE, the chunk will rerun sentiment analysis on our nine dataframes. 
 
 ```{r,echo=FALSE}
 #Reading in the packages that we used to wrangle our data
@@ -48,95 +244,93 @@ require(caret)
 require(rpart)
 ```
 
-```{r, echo=FALSE}
-skip <- TRUE
+```{r, echo=FALSE,eval=FALSE}
+reddit_df1 <- read_csv("reddit_df_final1.csv")
+reddit_df2 <- read_csv("reddit_df_final2.csv")
+reddit_df3 <- read_csv("reddit_df_final3.csv")
+reddit_df4 <- read_csv("reddit_df_final4.csv")
+reddit_df5 <- read_csv("reddit_df_final5.csv")
+reddit_df6 <- read_csv("reddit_df_final6.csv")
+reddit_df7 <- read_csv("reddit_df_final7.csv")
+reddit_df8 <- read_csv("reddit_df_final8.csv")
+reddit_df9 <- read_csv("reddit_df_final9.csv")
 
-if (skip == FALSE) {
-  reddit_df1 <- read_csv("reddit_df_final1.csv")
-  reddit_df2 <- read_csv("reddit_df_final2.csv")
-  reddit_df3 <- read_csv("reddit_df_final3.csv")
-  reddit_df4 <- read_csv("reddit_df_final4.csv")
-  reddit_df5 <- read_csv("reddit_df_final5.csv")
-  reddit_df6 <- read_csv("reddit_df_final6.csv")
-  reddit_df7 <- read_csv("reddit_df_final7.csv")
-  reddit_df8 <- read_csv("reddit_df_final8.csv")
-  reddit_df9 <- read_csv("reddit_df_final9.csv")
+#Sentiment Analysis on title
+#Read the SentiWordNet file:
+SentiWordNet <- read_delim("SentiWordNet_3.0.0_20130122.txt","\t",skip = 26, escape_double = FALSE, trim_ws = TRUE)
+
+#Save a list of stopwords (credit to xpo6.com)
+stopwords <- c("a", "about", "above", "above", "across", "after", "afterwards", "again", "against", "all", "almost", "along", "already", "also","although","always","am","among", "amongst", "amoungst", "amount",  "an", "and", "another", "any","anyhow","anyone","anything","anyway", "anywhere", "are", "around", "as",  "at", "back","be","became", "because","become","becomes", "becoming", "been", "before", "beforehand", "behind", "being", "below", "beside", "besides", "between", "beyond", "both", "bottom","but", "by", "call", "can", "cannot", "cant", "co", "con", "could", "couldnt", "cry", "de", "detail", "do", "done", "down", "due", "during", "each", "eg", "eight", "either", "eleven","else", "elsewhere", "empty", "enough", "etc", "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few", "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former", "formerly", "forty", "found", "four", "from", "front", "full", "further", "get", "give", "go", "had", "has", "hasnt", "have", "he", "hence", "her", "here", "hereafter", "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however", "hundred", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its", "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may", "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move", "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless", "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now", "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other", "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own","part", "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed", "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since", "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime", "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that", "the", "their", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "therefore", "therein", "thereupon", "these", "they", "thickv", "thin", "third", "this", "those", "though", "three", "through", "throughout", "thru", "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty", "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well", "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while", "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "with", "within", "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves", "the")
+
+#Alter SentiWordNet dataframe to have one word per row instead of multiple
+library("splitstackshape")
+SentiWordNet <- cSplit(SentiWordNet,"SynsetTerms"," ",direction = "long")
+SentiWordNet$SynsetTerms <- as.character(SentiWordNet$SynsetTerms) 
+
+analyzeTitle <- function(reddit_df,indexNum) {
+
+  #Set up vectors for title analysis results
+  c_test <- str_split(reddit_df$title,boundary("word"))
+  max_vec <- c()
+  mean_vec <- c()
+  titleSent_vec <- c()
   
-  #Sentiment Analysis on title
-  #Read the SentiWordNet file:
-  SentiWordNet <- read_delim("SentiWordNet_3.0.0_20130122.txt","\t",skip = 26, escape_double = FALSE, trim_ws = TRUE)
+  for (i in 1:length(c_test)){
+    #Compute maximum and mean word length
+    title_vec <- unlist(c_test[i])
+    max_word_len <- max(nchar(title_vec))
+    mean_word_len <- mean(nchar(title_vec))
+    max_vec <- c(max_vec, max_word_len)
+    mean_vec <- c(mean_vec, mean_word_len)
   
-  #Save a list of stopwords (credit to xpo6.com)
-  stopwords <- c("a", "about", "above", "above", "across", "after", "afterwards", "again", "against", "all", "almost", "along", "already", "also","although","always","am","among", "amongst", "amoungst", "amount",  "an", "and", "another", "any","anyhow","anyone","anything","anyway", "anywhere", "are", "around", "as",  "at", "back","be","became", "because","become","becomes", "becoming", "been", "before", "beforehand", "behind", "being", "below", "beside", "besides", "between", "beyond", "both", "bottom","but", "by", "call", "can", "cannot", "cant", "co", "con", "could", "couldnt", "cry", "de", "detail", "do", "done", "down", "due", "during", "each", "eg", "eight", "either", "eleven","else", "elsewhere", "empty", "enough", "etc", "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few", "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former", "formerly", "forty", "found", "four", "from", "front", "full", "further", "get", "give", "go", "had", "has", "hasnt", "have", "he", "hence", "her", "here", "hereafter", "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however", "hundred", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its", "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may", "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move", "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless", "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now", "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other", "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own","part", "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed", "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since", "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime", "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that", "the", "their", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "therefore", "therein", "thereupon", "these", "they", "thickv", "thin", "third", "this", "those", "though", "three", "through", "throughout", "thru", "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty", "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well", "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while", "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "with", "within", "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves", "the")
-  
-  #Alter SentiWordNet dataframe to have one word per row instead of multiple
-  library("splitstackshape")
-  SentiWordNet <- cSplit(SentiWordNet,"SynsetTerms"," ",direction = "long")
-  SentiWordNet$SynsetTerms <- as.character(SentiWordNet$SynsetTerms) 
-  
-  analyzeTitle <- function(reddit_df,indexNum) {
-  
-    #Set up vectors for title analysis results
-    c_test <- str_split(reddit_df$title,boundary("word"))
-    max_vec <- c()
-    mean_vec <- c()
-    titleSent_vec <- c()
-    
-    for (i in 1:length(c_test)){
-      #Compute maximum and mean word length
-      title_vec <- unlist(c_test[i])
-      max_word_len <- max(nchar(title_vec))
-      mean_word_len <- mean(nchar(title_vec))
-      max_vec <- c(max_vec, max_word_len)
-      mean_vec <- c(mean_vec, mean_word_len)
-    
-      #Sentiment Analysis
-      titleScore <- c()
-      for (word in title_vec){
-        if (word %in% stopwords)
-        {
-          
-        }
-        else
-        {
-          word <- str_to_lower(word)
-          #Add #1 to get first instance of word
-          word <- paste(word, "#1",sep = "")
-          #Find the word matrix for the word
-          wordMatrix <- SentiWordNet[grep(word, SentiWordNet$SynsetTerms),]
-          #Finds the shortest entry in the matrix (gives "thing#1" instead of "anything#1")
-          wordrow <- wordMatrix[nchar(wordMatrix$SynsetTerms) == min(nchar(wordMatrix$SynsetTerms)),][1,]
-          #Compte the score for this word
-          wordScore <- wordrow$PosScore - wordrow$NegScore
-          #Append to vector for this title
-          titleScore <- c(titleScore, wordScore)
-        }
+    #Sentiment Analysis
+    titleScore <- c()
+    for (word in title_vec){
+      if (word %in% stopwords)
+      {
+        
       }
-      #Compute and append mean sentiment score for this title
-      titleSent_vec <- c(titleSent_vec, mean(titleScore,na.rm=TRUE))
+      else
+      {
+        word <- str_to_lower(word)
+        #Add #1 to get first instance of word
+        word <- paste(word, "#1",sep = "")
+        #Find the word matrix for the word
+        wordMatrix <- SentiWordNet[grep(word, SentiWordNet$SynsetTerms),]
+        #Finds the shortest entry in the matrix (gives "thing#1" instead of "anything#1")
+        wordrow <- wordMatrix[nchar(wordMatrix$SynsetTerms) == min(nchar(wordMatrix$SynsetTerms)),][1,]
+        #Compte the score for this word
+        wordScore <- wordrow$PosScore - wordrow$NegScore
+        #Append to vector for this title
+        titleScore <- c(titleScore, wordScore)
+      }
     }
-    #c_test <- gsub("<", "", c_test, fixed=TRUE)
-    reddit_df$max_title_length <- max_vec
-    reddit_df$mean_title_length <- mean_vec
-    reddit_df$title_sent <- titleSent_vec
-    
-    savename <- paste("reddit_df_final",as.character(indexNum),"_sent.csv",sep = "")
-  
-    write.csv(reddit_df, file = savename)
+    #Compute and append mean sentiment score for this title
+    titleSent_vec <- c(titleSent_vec, mean(titleScore,na.rm=TRUE))
   }
+  #c_test <- gsub("<", "", c_test, fixed=TRUE)
+  reddit_df$max_title_length <- max_vec
+  reddit_df$mean_title_length <- mean_vec
+  reddit_df$title_sent <- titleSent_vec
   
-  #Run the above function on all of the data. It saves the sentiment analysis in a separate file to be read in below. 
-  analyzeTitle(reddit_df1,1)
-  analyzeTitle(reddit_df2,2)
-  analyzeTitle(reddit_df3,3)
-  analyzeTitle(reddit_df4,4)
-  analyzeTitle(reddit_df5,5)
-  analyzeTitle(reddit_df6,6)
-  analyzeTitle(reddit_df7,7)
-  analyzeTitle(reddit_df8,8)
-  analyzeTitle(reddit_df9,9)
+  savename <- paste("reddit_df_final",as.character(indexNum),"_sent.csv",sep = "")
+
+  write.csv(reddit_df, file = savename)
 }
 
+#Run the above function on all of the data. It saves the sentiment analysis in a separate file to be read in below. 
+analyzeTitle(reddit_df1,1)
+analyzeTitle(reddit_df2,2)
+analyzeTitle(reddit_df3,3)
+analyzeTitle(reddit_df4,4)
+analyzeTitle(reddit_df5,5)
+analyzeTitle(reddit_df6,6)
+analyzeTitle(reddit_df7,7)
+analyzeTitle(reddit_df8,8)
+analyzeTitle(reddit_df9,9)
+```
+
+```{r,echo=FALSE}
 #Read the reddit data into a dataframe after sentiment analysis
 reddit_df_final1 <- read_csv("reddit_df_final1_sent.csv")
 reddit_df_final2 <- read_csv("reddit_df_final2_sent.csv")
