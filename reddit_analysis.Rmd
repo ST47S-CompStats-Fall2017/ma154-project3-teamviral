@@ -31,7 +31,7 @@ With the fields that we queried as a basis, we extract additional information fr
 
 The code chunk below will run our python data aquisition code if you set eval=TRUE, though it must be modified with the start and end times listed in the code comments and run nine times if you wish to recreate our dataset exactly. However, our entire dataset is also available in this GitHub repository, so there is no need to rerun this chunk. 
 
-```{r, engine='python',echo=FALSE,eval=TRUE}
+```{r, engine='python',echo=FALSE,eval=FALSE}
 # Created reddit account "compstatsf17" with password "Sagehen47!" (no quotes on either of those)
 #
 # registered app as compstats17_final_project
