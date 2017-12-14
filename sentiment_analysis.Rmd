@@ -3,6 +3,8 @@ title: "sentiment_analysis"
 output: pdf_document
 ---
 
+Note: this file has been repeated in the main reddit_analysis.rmd file, but is also left here in case sentiment analysis is done separately. 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, 
                       fig.width=7, fig.height=3, fig.align = "center")

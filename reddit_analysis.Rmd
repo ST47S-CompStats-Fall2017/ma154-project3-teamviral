@@ -696,8 +696,6 @@ Of the variables that we use in our model, the output above suggests that the fo
 
 4. The $h$ index of content linked to in the post (lower better)
 
-Beyond this, there is a larger dropoff before the next variable, so it is safe to conclude that these are the most important four variables accroding to our model. 
-
 The first one might be because long post titles that summarize the content of the article allow readers to get their information without having to click through the article, causing them to upvote. Thumbnails give an article more legitimacy and catch the reader's attention on the webpage, so the second one also makes sense. The third and the fourth could be interpreted together, suggesting that readers are looking for a simpler presentation of the content. Having a rigorous, academic seems to negatively impact upvotes, so linking to a popular science summary of such an article might garner more attention. Also, the shorter average word length suggests that readers dislike long scientific jargon and would rather have the article presented in more digestable terms. 
 
 Beyond these top four, we see that the subfield that the article is about is mostly irrelevant. This seems to suggest that the presentation of the article - rather than the content - attracts readers. 
