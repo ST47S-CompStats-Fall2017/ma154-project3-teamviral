@@ -8,3 +8,5 @@ bindrcpp
 lattice
 caret
 rpart
+data.table
+splitstackshape
